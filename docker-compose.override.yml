@@ -1,0 +1,10 @@
+# Geliştirme ortamı override — docker-compose up ile otomatik okunur
+# Prod için: docker-compose -f docker-compose.yml up
+services:
+  db:
+    ports:
+      - "5433:5432"
+
+  api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
