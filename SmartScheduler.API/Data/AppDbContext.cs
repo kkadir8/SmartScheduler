@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<ScheduleEntry> ScheduleEntries => Set<ScheduleEntry>();
+    public DbSet<AppUser> Users => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
