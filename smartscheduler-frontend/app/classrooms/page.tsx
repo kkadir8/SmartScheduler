@@ -14,8 +14,8 @@ interface Classroom {
   name: string;
   capacity: number;
   hasLab: boolean;
-  building?: string;
-  hasProjector?: boolean;
+  building: string;
+  hasProjector: boolean;
 }
 
 function capacityVariant(pct: number): "success" | "warning" | "error" {
