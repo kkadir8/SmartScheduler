@@ -82,13 +82,21 @@ export default function CoursesPage() {
   const token = user?.token;
 
   const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
+    if (!course.instructorId) {
+      alert("Lütfen bir öğretim görevlisi seçin.");
+      return;
+    }
     const method = course.id ? "PUT" : "POST";
     const url = course.id ? `${API_BASE}/api/courses/${course.id}` : `${API_BASE}/api/courses`;
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(course),
     });
+    if (!res.ok) {
+      alert(`Hata: ${res.status} — ${await res.text()}`);
+      return;
+    }
     setShowModal(false);
     setEditCourse(null);
     fetchCourses();

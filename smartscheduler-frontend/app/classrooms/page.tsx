@@ -161,10 +161,13 @@ export default function ClassroomsPage() {
                           <span className="text-xs font-medium text-white/60">{classroom.capacity}</span>
                         </div>
                       </div>
-                      <div>
+                      <div className="flex gap-1 flex-wrap">
                         {classroom.hasLab
                           ? <StatusBadge variant="purple"><Monitor size={9} />Lab</StatusBadge>
                           : <StatusBadge variant="info"><DoorOpen size={9} />Sınıf</StatusBadge>}
+                        {classroom.hasProjector && (
+                          <StatusBadge variant="warning">Projektör</StatusBadge>
+                        )}
                       </div>
                       {user && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
