@@ -79,7 +79,7 @@ export default function CoursesPage() {
     fetchInstructors();
   }, []);
 
-  const token = user ? localStorage.getItem("token") : null;
+  const token = user?.token;
 
   const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
     const method = course.id ? "PUT" : "POST";

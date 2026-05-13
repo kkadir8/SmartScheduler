@@ -74,7 +74,7 @@ export default function InstructorsPage() {
 
   useEffect(() => { fetchInstructors(); }, []);
 
-  const token = user ? localStorage.getItem("token") : null;
+  const token = user?.token;
 
   const handleSave = async (instructor: { id?: number; name: string; title: string; department: string; email: string }) => {
     const method = instructor.id ? "PUT" : "POST";

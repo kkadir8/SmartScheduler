@@ -62,7 +62,7 @@ export default function ClassroomsPage() {
 
   useEffect(() => { fetchClassrooms(); }, []);
 
-  const token = user ? localStorage.getItem("token") : null;
+  const token = user?.token;
 
   const handleSave = async (classroom: { id?: number; name: string; building: string; capacity: number; hasLab: boolean; hasProjector: boolean }) => {
     const method = classroom.id ? "PUT" : "POST";
