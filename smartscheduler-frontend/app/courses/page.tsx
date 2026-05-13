@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Plus, BookOpen, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, Plus, BookOpen, ChevronUp, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
+import CourseModal from "../components/modals/CourseModal";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -13,8 +15,11 @@ interface Course {
   name: string;
   credit: number;
   instructorName: string;
+  instructorId: number;
   studentCount: number;
 }
+
+interface Instructor { id: number; name: string; }
 
 function creditVariant(credit: number): "success" | "info" | "purple" | "warning" {
   if (credit <= 2) return "success";
@@ -36,12 +41,16 @@ function SkeletonRow() {
 }
 
 export default function CoursesPage() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<keyof Course>("code");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [showModal, setShowModal] = useState(false);
+  const [editCourse, setEditCourse] = useState<Course | null>(null);
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -57,9 +66,42 @@ export default function CoursesPage() {
     }
   };
 
+  const fetchInstructors = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/instructors`);
+      const data = await res.json();
+      setInstructors(data);
+    } catch {}
+  };
+
   useEffect(() => {
     fetchCourses();
+    fetchInstructors();
   }, []);
+
+  const token = user ? localStorage.getItem("token") : null;
+
+  const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
+    const method = course.id ? "PUT" : "POST";
+    const url = course.id ? `${API_BASE}/api/courses/${course.id}` : `${API_BASE}/api/courses`;
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(course),
+    });
+    setShowModal(false);
+    setEditCourse(null);
+    fetchCourses();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bu dersi silmek istediğinizden emin misiniz?")) return;
+    await fetch(`${API_BASE}/api/courses/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchCourses();
+  };
 
   const handleSort = (key: keyof Course) => {
     if (sortKey === key) {
@@ -102,6 +144,15 @@ export default function CoursesPage() {
     { key: "studentCount", label: "Öğrenci" },
   ];
 
+  const modalCourseData = editCourse ? {
+    id: editCourse.id,
+    code: editCourse.code,
+    name: editCourse.name,
+    credit: editCourse.credit,
+    studentCount: editCourse.studentCount,
+    instructorId: editCourse.instructorId,
+  } : null;
+
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* Header */}
@@ -112,14 +163,15 @@ export default function CoursesPage() {
             {loading ? "Yükleniyor..." : `${filtered.length} ders listeleniyor`}
           </p>
         </div>
-        <button
-          disabled
-          title="Sprint 2'de aktif olacak"
-          className="flex items-center gap-2 bg-accent/10 border border-accent/20 text-accent/40 text-sm font-medium px-4 py-2 rounded-xl cursor-not-allowed"
-        >
-          <Plus size={15} />
-          Yeni Ders
-        </button>
+        {user && (
+          <button
+            onClick={() => { setEditCourse(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          >
+            <Plus size={15} />
+            Yeni Ders
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -168,10 +220,7 @@ export default function CoursesPage() {
                   </tr>
                 ) : (
                   filtered.map((course) => (
-                    <tr
-                      key={course.id}
-                      className="hover:bg-white/[0.02] transition-colors group"
-                    >
+                    <tr key={course.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-4 py-3.5">
                         <span className="font-mono text-xs font-semibold bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 rounded-md">
                           {course.code}
@@ -192,13 +241,25 @@ export default function CoursesPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-white/60">{course.studentCount}</span>
                           <div className="h-1.5 w-16 bg-white/[0.06] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-400/50 rounded-full"
-                              style={{ width: `${Math.min((course.studentCount / 60) * 100, 100)}%` }}
-                            />
+                            <div className="h-full bg-blue-400/50 rounded-full"
+                              style={{ width: `${Math.min((course.studentCount / 60) * 100, 100)}%` }} />
                           </div>
                         </div>
                       </td>
+                      {user && (
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => { setEditCourse(course); setShowModal(true); }}
+                              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors">
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => handleDelete(course.id)}
+                              className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-colors">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -218,6 +279,14 @@ export default function CoursesPage() {
             </div>
           )}
         </div>
+      )}
+      {showModal && (
+        <CourseModal
+          course={modalCourseData}
+          instructors={instructors}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditCourse(null); }}
+        />
       )}
     </div>
   );
