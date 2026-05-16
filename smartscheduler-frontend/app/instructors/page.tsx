@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, BookOpen, Users } from "lucide-react";
+import { Mail, BookOpen, Users, Calendar } from "lucide-react";
 import ApiError from "../components/ApiError";
+import AvailabilityModal from "../components/modals/AvailabilityModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -25,12 +26,7 @@ const avatarColors = [
 ];
 
 function getInitials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+  return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 }
 
 function SkeletonCard() {
@@ -57,6 +53,7 @@ export default function InstructorsPage() {
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [availabilityTarget, setAvailabilityTarget] = useState<Instructor | null>(null);
 
   const fetchInstructors = async () => {
     setLoading(true);
@@ -72,9 +69,7 @@ export default function InstructorsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchInstructors();
-  }, []);
+  useEffect(() => { fetchInstructors(); }, []);
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -101,45 +96,50 @@ export default function InstructorsPage() {
             : instructors.map((instructor, idx) => (
                 <div
                   key={instructor.id}
-                  className="bg-cardbg border border-white/[0.06] rounded-2xl p-5 card-hover hover:shadow-xl hover:shadow-purple-500/5 hover:border-white/[0.10] group animate-fadeIn"
+                  className="bg-cardbg border border-white/[0.06] rounded-2xl p-5 card-hover hover:shadow-xl hover:shadow-purple-500/5 hover:border-white/[0.10] group animate-fadeIn flex flex-col"
                   style={{ animationDelay: `${idx * 60}ms` }}
                 >
-                  {/* Avatar + name */}
                   <div className="flex items-start gap-4 mb-4">
-                    <div
-                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-lg font-bold text-white shadow-lg flex-shrink-0 group-hover:scale-105 transition-transform`}
-                    >
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-lg font-bold text-white shadow-lg flex-shrink-0 group-hover:scale-105 transition-transform`}>
                       {getInitials(instructor.name)}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white leading-tight truncate">
-                        {instructor.name}
-                      </div>
+                      <div className="text-sm font-semibold text-white leading-tight truncate">{instructor.name}</div>
                       <div className="text-xs text-accent mt-0.5 font-medium">{instructor.title}</div>
-                      <div className="text-[11px] text-white/40 mt-0.5 truncate">
-                        {instructor.department}
-                      </div>
+                      <div className="text-[11px] text-white/40 mt-0.5 truncate">{instructor.department}</div>
                     </div>
                   </div>
 
                   <div className="h-px bg-white/[0.04] mb-3" />
 
-                  {/* Contact info */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2">
                       <Mail size={12} className="text-white/25 flex-shrink-0" />
                       <span className="text-[11px] text-white/40 truncate">{instructor.email}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <BookOpen size={12} className="text-white/25 flex-shrink-0" />
-                      <span className="text-[11px] text-white/40">
-                        {instructor.courseCount ?? "—"} ders verilen
-                      </span>
+                      <span className="text-[11px] text-white/40">{instructor.courseCount ?? "—"} ders verilen</span>
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => setAvailabilityTarget(instructor)}
+                    className="mt-4 w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-accent/10 border border-white/[0.06] hover:border-accent/30 text-white/40 hover:text-accent text-xs font-medium py-2 rounded-xl transition-all"
+                  >
+                    <Calendar size={12} />
+                    Müsaitlik Ayarla
+                  </button>
                 </div>
               ))}
         </div>
+      )}
+
+      {availabilityTarget && (
+        <AvailabilityModal
+          instructor={availabilityTarget}
+          onClose={() => setAvailabilityTarget(null)}
+        />
       )}
     </div>
   );
