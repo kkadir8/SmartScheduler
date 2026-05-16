@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DoorOpen, Users, Monitor } from "lucide-react";
+import { DoorOpen, Users, Monitor, Plus, Pencil, Trash2 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
+import ClassroomModal from "../components/modals/ClassroomModal";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -12,8 +14,8 @@ interface Classroom {
   name: string;
   capacity: number;
   hasLab: boolean;
-  building?: string;
-  hasProjector?: boolean;
+  building: string;
+  hasProjector: boolean;
 }
 
 function capacityVariant(pct: number): "success" | "warning" | "error" {
@@ -37,9 +39,12 @@ function SkeletonRow() {
 }
 
 export default function ClassroomsPage() {
+  const { user } = useAuth();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editClassroom, setEditClassroom] = useState<Classroom | null>(null);
 
   const fetchClassrooms = async () => {
     setLoading(true);
@@ -55,16 +60,37 @@ export default function ClassroomsPage() {
     }
   };
 
-  useEffect(() => {
+  useEffect(() => { fetchClassrooms(); }, []);
+
+  const token = user?.token;
+
+  const handleSave = async (classroom: { id?: number; name: string; building: string; capacity: number; hasLab: boolean; hasProjector: boolean }) => {
+    const method = classroom.id ? "PUT" : "POST";
+    const url = classroom.id ? `${API_BASE}/api/classrooms/${classroom.id}` : `${API_BASE}/api/classrooms`;
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(classroom),
+    });
+    setShowModal(false);
+    setEditClassroom(null);
     fetchClassrooms();
-  }, []);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bu sınıfı silmek istediğinizden emin misiniz?")) return;
+    await fetch(`${API_BASE}/api/classrooms/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchClassrooms();
+  };
 
   const labCount = classrooms.filter((c) => c.hasLab).length;
   const totalCapacity = classrooms.reduce((sum, c) => sum + c.capacity, 0);
 
   return (
     <div className="space-y-5 animate-fadeIn">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-white">Derslikler</h2>
@@ -72,39 +98,41 @@ export default function ClassroomsPage() {
             {loading ? "Yükleniyor..." : `${classrooms.length} derslik — toplam ${totalCapacity} kişilik kapasite`}
           </p>
         </div>
-        {!loading && !error && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
-              <Monitor size={13} className="text-purple-400" />
-              <span className="text-xs text-white/50">{labCount} Lab</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
-              <DoorOpen size={13} className="text-blue-400" />
-              <span className="text-xs text-white/50">{classrooms.length - labCount} Sınıf</span>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!loading && !error && (
+            <>
+              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
+                <Monitor size={13} className="text-purple-400" />
+                <span className="text-xs text-white/50">{labCount} Lab</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
+                <DoorOpen size={13} className="text-blue-400" />
+                <span className="text-xs text-white/50">{classrooms.length - labCount} Sınıf</span>
+              </div>
+            </>
+          )}
+          {user && (
+            <button onClick={() => { setEditClassroom(null); setShowModal(true); }}
+              className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+              <Plus size={15} />
+              Yeni Sınıf
+            </button>
+          )}
+        </div>
       </div>
 
       {error ? (
         <ApiError onRetry={fetchClassrooms} />
       ) : (
         <div className="bg-cardbg border border-white/[0.06] rounded-2xl overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-white/[0.06]">
+          <div className="grid grid-cols-[auto_1fr_1fr_auto_auto] gap-4 px-5 py-3 border-b border-white/[0.06]">
             <div className="w-10" />
-            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">
-              Sınıf Adı
-            </div>
-            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">
-              Kapasite
-            </div>
-            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">
-              Tür
-            </div>
+            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">Sınıf Adı</div>
+            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">Kapasite</div>
+            <div className="text-[11px] font-semibold text-white/40 uppercase tracking-wider">Tür</div>
+            <div className="w-16" />
           </div>
 
-          {/* Rows */}
           <div className="divide-y divide-white/[0.04]">
             {loading
               ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
@@ -113,93 +141,66 @@ export default function ClassroomsPage() {
                   const pct = Math.round((classroom.capacity / maxCapacity) * 100);
                   const variant = capacityVariant(pct);
                   return (
-                    <div
-                      key={classroom.id}
-                      className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors group animate-fadeIn"
-                      style={{ animationDelay: `${idx * 40}ms` }}
-                    >
-                      {/* Icon */}
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          classroom.hasLab
-                            ? "bg-purple-500/10 border border-purple-500/20"
-                            : "bg-blue-500/10 border border-blue-500/20"
-                        }`}
-                      >
-                        {classroom.hasLab ? (
-                          <Monitor size={16} className="text-purple-400" />
-                        ) : (
-                          <DoorOpen size={16} className="text-blue-400" />
-                        )}
+                    <div key={classroom.id}
+                      className="grid grid-cols-[auto_1fr_1fr_auto_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors group animate-fadeIn"
+                      style={{ animationDelay: `${idx * 40}ms` }}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${classroom.hasLab ? "bg-purple-500/10 border border-purple-500/20" : "bg-blue-500/10 border border-blue-500/20"}`}>
+                        {classroom.hasLab ? <Monitor size={16} className="text-purple-400" /> : <DoorOpen size={16} className="text-blue-400" />}
                       </div>
-
-                      {/* Name */}
                       <div>
-                        <div className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
-                          {classroom.name}
+                        <div className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">{classroom.name}</div>
+                        {classroom.building && <div className="text-[11px] text-white/30 mt-0.5">{classroom.building}</div>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-700 ${variant === "success" ? "bg-emerald-400" : variant === "warning" ? "bg-yellow-400" : "bg-red-400"}`}
+                            style={{ width: `${pct}%` }} />
                         </div>
-                        {classroom.building && (
-                          <div className="text-[11px] text-white/30 mt-0.5">
-                            {classroom.building}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Capacity bar */}
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                variant === "success"
-                                  ? "bg-emerald-400"
-                                  : variant === "warning"
-                                  ? "bg-yellow-400"
-                                  : "bg-red-400"
-                              }`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <Users size={12} className="text-white/30" />
-                            <span className="text-xs font-medium text-white/60">
-                              {classroom.capacity}
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Users size={12} className="text-white/30" />
+                          <span className="text-xs font-medium text-white/60">{classroom.capacity}</span>
                         </div>
                       </div>
-
-                      {/* Type badge */}
-                      <div>
-                        {classroom.hasLab ? (
-                          <StatusBadge variant="purple">
-                            <Monitor size={9} />
-                            Lab
-                          </StatusBadge>
-                        ) : (
-                          <StatusBadge variant="info">
-                            <DoorOpen size={9} />
-                            Sınıf
-                          </StatusBadge>
+                      <div className="flex gap-1 flex-wrap">
+                        {classroom.hasLab
+                          ? <StatusBadge variant="purple"><Monitor size={9} />Lab</StatusBadge>
+                          : <StatusBadge variant="info"><DoorOpen size={9} />Sınıf</StatusBadge>}
+                        {classroom.hasProjector && (
+                          <StatusBadge variant="warning">Projektör</StatusBadge>
                         )}
                       </div>
+                      {user && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditClassroom(classroom); setShowModal(true); }}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => handleDelete(classroom.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
           </div>
 
-          {/* Footer summary */}
           {!loading && !error && (
             <div className="px-5 py-3 border-t border-white/[0.04] flex items-center justify-between">
-              <span className="text-xs text-white/25">
-                {classrooms.length} derslik listeleniyor
-              </span>
-              <span className="text-xs text-white/25">
-                Ortalama kapasite: {Math.round(totalCapacity / (classrooms.length || 1))} kişi
-              </span>
+              <span className="text-xs text-white/25">{classrooms.length} derslik listeleniyor</span>
+              <span className="text-xs text-white/25">Ortalama kapasite: {Math.round(totalCapacity / (classrooms.length || 1))} kişi</span>
             </div>
           )}
         </div>
+      )}
+
+      {showModal && (
+        <ClassroomModal
+          classroom={editClassroom}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditClassroom(null); }}
+        />
       )}
     </div>
   );

@@ -30,47 +30,47 @@ const teamMembers = [
 ];
 
 const sprintTasks = [
-  { text: "Proje kurulumu & repo yapısı", done: true },
-  { text: "ASP.NET Core API scaffolding", done: true },
-  { text: "In-memory veri katmanı", done: true },
-  { text: "CORS & Swagger entegrasyonu", done: true },
-  { text: "Next.js 14 frontend kurulumu", done: true },
-  { text: "Dashboard UI geliştirme", done: true },
-  { text: "API entegrasyonu (frontend)", done: true },
-  { text: "PostgreSQL şema tasarımı", done: true },
-  { text: "Entity Framework Core setup", done: true },
-  { text: "Unit test altyapısı", done: true },
+  { text: "JWT Authentication & BCrypt şifreleme", done: true },
+  { text: "Repository Pattern & Unit of Work", done: true },
+  { text: "CRUD API endpoint'leri (POST/PUT/DELETE)", done: true },
+  { text: "Login / Register sayfaları", done: true },
+  { text: "Admin CRUD modal'ları (Dersler, Hocalar, Sınıflar)", done: true },
+  { text: "AuthContext & JWT token yönetimi", done: true },
+  { text: "Genetik algoritma servisi (crossover, mutation)", done: true },
+  { text: "Program oluşturma endpoint'i", done: true },
+  { text: "GitHub Actions CI/CD pipeline", done: true },
+  { text: "Docker multi-container build", done: true },
 ];
 
 const activities = [
   {
-    icon: GitCommit,
-    text: "Backend API endpoint'leri tamamlandı",
+    icon: Cpu,
+    text: "Genetik algoritma servisi tamamlandı — crossover, mutation, fitness",
     time: "2 saat önce",
     color: "text-emerald-400",
   },
   {
     icon: Layers,
-    text: "Frontend dashboard redesign başladı",
-    time: "4 saat önce",
+    text: "Login/Register sayfaları & CRUD modal'ları eklendi",
+    time: "3 saat önce",
     color: "text-purple-400",
   },
   {
-    icon: Database,
-    text: "In-memory data layer implement edildi",
-    time: "1 gün önce",
+    icon: GitCommit,
+    text: "JWT Auth middleware & BCrypt entegrasyonu tamamlandı",
+    time: "5 saat önce",
     color: "text-blue-400",
   },
   {
-    icon: Globe,
-    text: "CORS politikası yapılandırıldı",
-    time: "1 gün önce",
+    icon: Database,
+    text: "Repository Pattern & Unit of Work implementasyonu",
+    time: "6 saat önce",
     color: "text-yellow-400",
   },
   {
-    icon: Cpu,
-    text: "Trello sprint board hazırlandı",
-    time: "2 gün önce",
+    icon: Globe,
+    text: "GitHub Actions CI/CD pipeline kuruldu",
+    time: "1 gün önce",
     color: "text-accent",
   },
 ];
@@ -139,7 +139,7 @@ export default function DashboardPage() {
       <div>
         <h2 className="text-xl font-bold text-white">Genel Bakış</h2>
         <p className="text-sm text-white/40 mt-0.5">
-          Sprint 1 — Yazılım Projesi Geliştirme 2025-2026 Bahar
+          Sprint 2 — Yazılım Projesi Geliştirme 2025-2026 Bahar
         </p>
       </div>
 
@@ -189,7 +189,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-cardbg border border-white/[0.06] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-sm font-semibold text-white">Sprint 1 Durumu</h3>
+              <h3 className="text-sm font-semibold text-white">Sprint 2 Durumu</h3>
               <p className="text-xs text-white/40 mt-0.5">
                 {completedTasks}/{sprintTasks.length} görev tamamlandı
               </p>

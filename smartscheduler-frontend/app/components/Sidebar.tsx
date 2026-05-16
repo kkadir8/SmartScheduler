@@ -114,7 +114,7 @@ export default function Sidebar() {
         <div className="mx-3 mb-4 p-3 rounded-xl bg-primary/40 border border-white/[0.06] animate-fadeIn">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={12} className="text-accent" />
-            <span className="text-[11px] font-semibold text-white/70">Sprint 1 Aktif</span>
+            <span className="text-[11px] font-semibold text-white/70">Sprint 2 Aktif</span>
           </div>
           <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
             <div className="progress-bar h-full" style={{ width: "100%" }} />

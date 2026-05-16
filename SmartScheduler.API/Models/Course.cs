@@ -8,7 +8,7 @@ public class Course
     public int Credit { get; set; }
     public int StudentCount { get; set; }
     public int InstructorId { get; set; }
-    public Instructor Instructor { get; set; } = null!;
+    public Instructor? Instructor { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<ScheduleEntry> ScheduleEntries { get; set; } = [];

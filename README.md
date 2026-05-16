@@ -6,8 +6,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Status](https://img.shields.io/badge/status-Sprint%201-orange)]()
-[![CI](https://github.com/kkadir8/DevArchitechs/actions/workflows/ci.yml/badge.svg)](https://github.com/kkadir8/DevArchitechs/actions/workflows/ci.yml)
+[![Status](https://img.shields.io/badge/status-Sprint%202%20✓-green)]()
+[![CI](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml)
 
 **Ekip:** DevArchitechs | **Ders:** Yazılım Projesi Geliştirme 2025-2026 Bahar | **Metodoloji:** Scrum (4 Sprint)  
 **Görev Takibi:** [Trello Board](https://trello.com/b/Ephz3yhd/smartscheduler-devarchitechs)
@@ -22,17 +22,23 @@ SmartScheduler, üniversitelerde ders programı oluşturma sürecini otomatikle�
 
 ## Hızlı Başlangıç
 
-### Backend (ASP.NET Core 9)
+### Docker ile (Önerilen)
 ```bash
-# PostgreSQL başlat
-brew services start postgresql@16
+docker compose up --build
+# Frontend → http://localhost:3000
+# API      → http://localhost:5001/swagger
+```
 
+### Manuel
+
+**Backend (ASP.NET Core 9)**
+```bash
 cd SmartScheduler.API
 dotnet run
 # → http://localhost:5000  (Swagger UI)
 ```
 
-### Frontend (Next.js 14)
+**Frontend (Next.js 14)**
 ```bash
 cd smartscheduler-frontend
 npm install
@@ -47,18 +53,22 @@ npm run dev
 ```
 ┌─────────────────────────────────────────┐
 │   Presentation Layer (Next.js 14)       │
+│   Auth Context · CRUD Modals · Pages    │
 └─────────────────┬───────────────────────┘
-                  │ REST API (JSON)
+                  │ REST API + JWT Bearer
 ┌─────────────────▼───────────────────────┐
 │   API Layer (ASP.NET Core 9)            │
-│   Controllers + Service Layer           │
+│   Controllers · AuthService · JWT       │
 └─────────────────┬───────────────────────┘
 ┌─────────────────▼───────────────────────┐
 │   Algorithm Engine (C#)                 │
-│   Genetic Algorithm — Sprint 3          │
+│   Genetic Algorithm — crossover,        │
+│   mutation, fitness, tournament select  │
 └─────────────────┬───────────────────────┘
 ┌─────────────────▼───────────────────────┐
-│   Data Access Layer (EF Core 9)         │
+│   Data Access Layer                     │
+│   Repository Pattern · Unit of Work     │
+│   Entity Framework Core 9              │
 └─────────────────┬───────────────────────┘
 ┌─────────────────▼───────────────────────┐
 │   PostgreSQL 16                         │
@@ -71,21 +81,47 @@ npm run dev
 
 | Route | Açıklama |
 |-------|----------|
+| `/login` | JWT ile giriş |
+| `/register` | Kullanıcı kaydı |
 | `/dashboard` | Genel bakış — metrikler, sprint durumu, ekip |
-| `/courses` | Ders kataloğu — arama, sıralama |
-| `/instructors` | Öğretim görevlileri — kart görünümü |
-| `/classrooms` | Derslikler — kapasite barları |
-| `/schedule` | Program oluşturucu (Sprint 3) |
+| `/courses` | Ders kataloğu — CRUD (giriş gerekli) |
+| `/instructors` | Öğretim görevlileri — CRUD (giriş gerekli) |
+| `/classrooms` | Derslikler — CRUD (giriş gerekli) |
+| `/schedule` | Program oluşturucu — genetik algoritma |
 
 ---
 
 ## API Endpoint'leri
 
 ```
-GET  /api/health         → Sistem durumu
-GET  /api/courses        → Ders listesi (PostgreSQL)
-GET  /api/instructors    → Hoca listesi (PostgreSQL)
-GET  /api/classrooms     → Sınıf listesi (PostgreSQL)
+# Auth
+POST /api/auth/register     → Kayıt
+POST /api/auth/login        → Giriş (JWT döner)
+
+# Courses
+GET    /api/courses         → Ders listesi
+POST   /api/courses         → Ders ekle        [Authorize]
+PUT    /api/courses/{id}    → Ders güncelle     [Authorize]
+DELETE /api/courses/{id}    → Ders sil          [Authorize]
+
+# Instructors
+GET    /api/instructors
+POST   /api/instructors                         [Authorize]
+PUT    /api/instructors/{id}                    [Authorize]
+DELETE /api/instructors/{id}                    [Authorize]
+
+# Classrooms
+GET    /api/classrooms
+POST   /api/classrooms                          [Authorize]
+PUT    /api/classrooms/{id}                     [Authorize]
+DELETE /api/classrooms/{id}                     [Authorize]
+
+# Schedule
+POST   /api/schedule/generate                   [Authorize]
+→ Genetik algoritma ile program üretir
+
+# System
+GET    /api/health          → Sistem durumu
 ```
 
 ---
@@ -96,9 +132,11 @@ GET  /api/classrooms     → Sınıf listesi (PostgreSQL)
 |--------|-----------|
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Backend | ASP.NET Core 9, C# |
+| Authentication | JWT Bearer Token, BCrypt |
 | ORM | Entity Framework Core 9 |
+| Veri Erişimi | Repository Pattern, Unit of Work |
+| Algoritma | Genetik Algoritma (crossover, mutation, fitness) |
 | Veritabanı | PostgreSQL 16 |
-| Authentication | JWT Bearer Token (Sprint 2) |
 | API Dokümantasyon | Swagger / OpenAPI |
 | Container | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
@@ -109,23 +147,39 @@ GET  /api/classrooms     → Sınıf listesi (PostgreSQL)
 
 ```
 SmartScheduler/
-├── SmartScheduler.API/          # Backend API
+├── SmartScheduler.API/
 │   ├── Controllers/
+│   │   ├── AuthController.cs
+│   │   ├── CoursesController.cs
+│   │   ├── InstructorsController.cs
+│   │   ├── ClassroomsController.cs
+│   │   └── ScheduleController.cs
 │   ├── Models/
-│   ├── Data/                    # AppDbContext
-│   ├── Migrations/              # EF Core migrations
+│   │   ├── Algorithm/        # Gene, Chromosome
+│   │   └── Auth/             # LoginRequest, RegisterRequest, AuthResponse
+│   ├── Repositories/         # Repository Pattern + Unit of Work
+│   ├── Services/
+│   │   ├── AuthService.cs
+│   │   └── GeneticAlgorithmService.cs
+│   ├── Data/                 # AppDbContext
+│   ├── Migrations/
 │   └── Program.cs
-├── smartscheduler-frontend/     # Next.js frontend
+├── smartscheduler-frontend/
 │   └── app/
+│       ├── login/
+│       ├── register/
+│       ├── context/          # AuthContext (JWT)
+│       ├── components/
+│       │   └── modals/       # CourseModal, InstructorModal, ClassroomModal
 │       ├── dashboard/
 │       ├── courses/
 │       ├── instructors/
 │       ├── classrooms/
-│       ├── schedule/
-│       └── components/
-└── docs/
-    ├── ARCHITECTURE.md
-    └── DATABASE_SCHEMA.md
+│       └── schedule/
+├── docs/
+│   ├── ARCHITECTURE.md
+│   └── DATABASE_SCHEMA.md
+└── docker-compose.yml
 ```
 
 ---
@@ -134,23 +188,35 @@ SmartScheduler/
 
 | Sprint | Hedef | Durum |
 |--------|-------|-------|
-| Sunum 1 | Planlama & Scrum | ✅ Bitti |
-| Sprint 1 | Kurulum & API & Frontend | ✅ Bitti |
-| Sprint 2 | Algoritma + CRUD + Auth | ⏳ Yaklaşan |
-| Sprint 3 | Dashboard & Takvim & Entegrasyon | ⏳ Yaklaşan |
-| Sprint 4 | Test & Deploy & Final Demo | ⏳ Yaklaşan |
+| Sunum 1 | Planlama & Scrum | ✅ Tamamlandı |
+| Sprint 1 | Kurulum · PostgreSQL · API · Frontend | ✅ Tamamlandı |
+| Sprint 2 | JWT Auth · CRUD · Repository · Genetik Algoritma | ✅ Tamamlandı |
+| Sprint 3 | Program Oluştur UI · Takvim · Test | 🔄 Devam Ediyor |
+| Sprint 4 | Deploy · Final Demo | ⏳ Yaklaşan |
+
+### Sprint 2 Tamamlanan Özellikler
+- ✅ JWT Authentication & BCrypt şifreleme
+- ✅ Repository Pattern & Unit of Work
+- ✅ CRUD API endpoint'leri (POST / PUT / DELETE)
+- ✅ Login / Register sayfaları
+- ✅ Admin CRUD modal'ları (Dersler, Hocalar, Sınıflar)
+- ✅ AuthContext & JWT token yönetimi (frontend)
+- ✅ Genetik algoritma servisi (crossover, mutation, fitness, tournament selection)
+- ✅ `/api/schedule/generate` endpoint'i
+- ✅ GitHub Actions CI/CD pipeline
+- ✅ Docker multi-container build
 
 ---
 
 ## Ekip — DevArchitechs
 
-| İsim | Rol | Alan |
-|------|-----|------|
-| Abdulkadir Gedik | Product Owner | Algoritma & koordinasyon |
-| Yunus Emre Edizer | Scrum Master | Backend Lead (.NET) |
-| Emin Akif Erzurumlu | Developer | Frontend Lead (Next.js) |
-| Hamza Hakverir | Developer | Veritabanı & DAL |
-| Burak Kürkçü | Developer | DevOps & Test |
+| İsim | Rol | Sorumluluk |
+|------|-----|------------|
+| Abdulkadir Gedik | Product Owner | Genetik algoritma & koordinasyon |
+| Yunus Emre Edizer | Scrum Master | Backend Lead — JWT, CRUD API |
+| Emin Akif Erzurumlu | Developer | Frontend Lead — UI, Auth, Modals |
+| Hamza Hakverir | Developer | Veritabanı & Repository Pattern |
+| Burak Kürkçü | Developer | DevOps & Test — CI/CD |
 
 ---
 
@@ -158,8 +224,8 @@ SmartScheduler/
 
 - [Mimari Tasarım](docs/ARCHITECTURE.md)
 - [Veritabanı Şeması](docs/DATABASE_SCHEMA.md)
-- [API Dokümantasyonu](http://localhost:5000) (uygulama çalışırken)
+- [API Dokümantasyonu](http://localhost:5001/swagger) (Docker ile çalışırken)
 
 ---
 
-**SmartScheduler** by **DevArchitechs** • Yazılım Projesi Geliştirme • 2025-2026 Bahar.
+**SmartScheduler** by **DevArchitechs** • Yazılım Projesi Geliştirme • 2025-2026 Bahar
