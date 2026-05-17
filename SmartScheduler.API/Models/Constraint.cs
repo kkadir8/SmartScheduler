@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+
 namespace SmartScheduler.API.Models;
 
 /// <summary>
@@ -11,10 +14,14 @@ public class Constraint
 
     /// <summary>Kısıt uygulanan ders</summary>
     public int CourseId { get; set; }
+    [JsonIgnore]
+    [ValidateNever]
     public Course Course { get; set; } = null!;
 
     /// <summary>İzin verilen derslik</summary>
     public int ClassroomId { get; set; }
+    [JsonIgnore]
+    [ValidateNever]
     public Classroom Classroom { get; set; } = null!;
 
     /// <summary>Kısıt için isteğe bağlı açıklama notu</summary>
