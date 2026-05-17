@@ -17,37 +17,12 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  {
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    badge: null,
-  },
-  {
-    href: "/courses",
-    icon: BookOpen,
-    label: "Dersler",
-    badge: null,
-  },
-  {
-    href: "/instructors",
-    icon: Users,
-    label: "Hocalar",
-    badge: null,
-  },
-  {
-    href: "/classrooms",
-    icon: DoorOpen,
-    label: "Sınıflar",
-    badge: null,
-  },
-  {
-    href: "/schedule",
-    icon: CalendarCog,
-  ShieldCheck,
-    label: "Program Oluştur",
-    badge: "S3",
-  },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", badge: null },
+  { href: "/courses", icon: BookOpen, label: "Dersler", badge: null },
+  { href: "/instructors", icon: Users, label: "Hocalar", badge: null },
+  { href: "/classrooms", icon: DoorOpen, label: "Sınıflar", badge: null },
+  { href: "/schedule", icon: CalendarCog, label: "Program Oluştur", badge: "S3" },
+  { href: "/constraints", icon: ShieldCheck, label: "Kısıtlar", badge: "S3" },
 ];
 
 export default function Sidebar() {
