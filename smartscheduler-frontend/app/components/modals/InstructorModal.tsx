@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, Save } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { X, Save, ChevronDown, Check } from "lucide-react";
 
 interface Instructor {
   id?: number;
@@ -19,13 +20,54 @@ interface Props {
 
 const TITLES = ["Dr.", "Prof. Dr.", "Doç. Dr.", "Arş. Gör.", "Öğr. Gör."];
 
+function CustomSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all flex items-center justify-between"
+      >
+        <span>{value}</span>
+        <ChevronDown size={14} className={`text-white/40 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[#1e1e2e] border border-white/[0.10] rounded-xl overflow-hidden shadow-xl" style={{ zIndex: 10001 }}>
+          {TITLES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => { onChange(t); setOpen(false); }}
+              className="w-full px-3 py-2.5 text-sm text-left flex items-center justify-between hover:bg-white/[0.06] transition-colors"
+            >
+              <span className={value === t ? "text-accent" : "text-white/70"}>{t}</span>
+              {value === t && <Check size={13} className="text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function InstructorModal({ instructor, onSave, onClose }: Props) {
   const [form, setForm] = useState<Instructor>({ name: "", title: "Dr.", department: "", email: "" });
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    if (instructor) setForm(instructor);
-  }, [instructor]);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { if (instructor) setForm(instructor); }, [instructor]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,23 +82,27 @@ export default function InstructorModal({ instructor, onSave, onClose }: Props) 
     { key: "email", label: "E-posta", type: "email", placeholder: "ahmet@universite.edu.tr" },
   ];
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 }}
+    >
       <div className="bg-cardbg border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-white/[0.06]">
           <h3 className="text-lg font-semibold text-white">
             {instructor?.id ? "Hoca Düzenle" : "Yeni Hoca Ekle"}
           </h3>
-          <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors"><X size={20} /></button>
+          <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors">
+            <X size={20} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs text-white/50 mb-1.5">Unvan</label>
-            <select value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all">
-              {TITLES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <CustomSelect value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
           </div>
 
           {fields.map(({ key, label, type, placeholder }) => (
@@ -80,6 +126,7 @@ export default function InstructorModal({ instructor, onSave, onClose }: Props) 
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

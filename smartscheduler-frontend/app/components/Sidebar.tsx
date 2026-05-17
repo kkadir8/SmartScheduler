@@ -9,6 +9,7 @@ import {
   Users,
   DoorOpen,
   CalendarCog,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -43,6 +44,7 @@ const navItems = [
   {
     href: "/schedule",
     icon: CalendarCog,
+  ShieldCheck,
     label: "Program Oluştur",
     badge: "S3",
   },
