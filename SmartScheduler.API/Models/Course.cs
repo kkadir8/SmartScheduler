@@ -12,4 +12,5 @@ public class Course
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<ScheduleEntry> ScheduleEntries { get; set; } = [];
+    public ICollection<Constraint> Constraints { get; set; } = [];
 }
