@@ -9,6 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  TrendingUp,
+  Dna,
+  CheckCircle2,
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 
@@ -27,6 +30,14 @@ interface ScheduleEntry {
   course?: { name: string; code: string };
   classroom?: { name: string };
   instructor?: { name: string };
+}
+
+interface FitnessData {
+  fitnessPercent: number;
+  conflictCount: number;
+  bestGeneration: number;
+  totalGenerations: number;
+  fitnessHistory: number[];
 }
 
 const ENTRY_COLORS = [
@@ -54,6 +65,40 @@ function LoadingDots() {
         />
       ))}
     </div>
+  );
+}
+
+function FitnessChart({ history }: { history: number[] }) {
+  if (history.length < 2) return null;
+  const w = 400;
+  const h = 80;
+  const pad = 8;
+  const max = Math.max(...history, 0.0001);
+  const points = history.map((v, i) => {
+    const x = pad + (i / (history.length - 1)) * (w - pad * 2);
+    const y = h - pad - (v / max) * (h - pad * 2);
+    return `${x},${y}`;
+  });
+  const pathD = `M ${points.join(" L ")}`;
+  const areaD = `M ${pad},${h - pad} L ${points.join(" L ")} L ${pad + (w - pad * 2)},${h - pad} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7c6af7" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#7c6af7" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={areaD} fill="url(#fg)" />
+      <path d={pathD} fill="none" stroke="#7c6af7" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <circle
+        cx={pad + (w - pad * 2)}
+        cy={h - pad - (history[history.length - 1] / max) * (h - pad * 2)}
+        r="3"
+        fill="#7c6af7"
+      />
+    </svg>
   );
 }
 
@@ -198,10 +243,12 @@ export default function SchedulePage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const [fitnessData, setFitnessData] = useState<FitnessData | null>(null);
 
   const generate = useCallback(async () => {
     setStatus("loading");
     setErrorMsg("");
+    setFitnessData(null);
     try {
       const res = await fetch(`${API_BASE}/api/schedule/generate`, {
         method: "POST",
@@ -214,6 +261,15 @@ export default function SchedulePage() {
       const data = await res.json();
       // API { entries: [...] } ya da direkt dizi dönebilir
       setEntries(Array.isArray(data) ? data : data.entries ?? []);
+      if (!Array.isArray(data) && data.fitnessHistory) {
+        setFitnessData({
+          fitnessPercent: data.fitnessPercent ?? 0,
+          conflictCount: data.conflictCount ?? 0,
+          bestGeneration: data.bestGeneration ?? 0,
+          totalGenerations: data.totalGenerations ?? 0,
+          fitnessHistory: data.fitnessHistory ?? [],
+        });
+      }
       setStatus("success");
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Bilinmeyen bir hata oluştu.");
@@ -288,6 +344,72 @@ export default function SchedulePage() {
           </div>
         )}
       </div>
+
+      {/* Fitness Stats */}
+      {status === "success" && fitnessData && (
+        <div className="space-y-3 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Dna size={14} className="text-accent" />
+            <h3 className="text-sm font-semibold text-white">Genetik Algoritma Sonuçları</h3>
+          </div>
+
+          {/* Metric cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                label: "Fitness Skoru",
+                value: `${fitnessData.fitnessPercent}%`,
+                icon: <TrendingUp size={14} className="text-accent" />,
+                color: "text-accent",
+              },
+              {
+                label: "Çakışma",
+                value: fitnessData.conflictCount === 0 ? "Yok" : `${fitnessData.conflictCount}`,
+                icon: <CheckCircle2 size={14} className={fitnessData.conflictCount === 0 ? "text-emerald-400" : "text-rose-400"} />,
+                color: fitnessData.conflictCount === 0 ? "text-emerald-400" : "text-rose-400",
+              },
+              {
+                label: "En İyi Nesil",
+                value: `#${fitnessData.bestGeneration}`,
+                icon: <Dna size={14} className="text-purple-400" />,
+                color: "text-purple-400",
+              },
+              {
+                label: "Toplam Nesil",
+                value: fitnessData.totalGenerations.toString(),
+                icon: <Sparkles size={14} className="text-orange-400" />,
+                color: "text-orange-400",
+              },
+            ].map((m) => (
+              <div
+                key={m.label}
+                className="bg-cardbg border border-white/[0.06] rounded-xl px-4 py-3 flex flex-col gap-1"
+              >
+                <div className="flex items-center gap-1.5 text-white/40">
+                  {m.icon}
+                  <span className="text-[11px]">{m.label}</span>
+                </div>
+                <div className={`text-lg font-bold ${m.color}`}>{m.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Fitness history chart */}
+          {fitnessData.fitnessHistory.length > 1 && (
+            <div className="bg-cardbg border border-white/[0.06] rounded-xl px-4 pt-3 pb-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-white/40">Nesil başına fitness değişimi</span>
+                <span className="text-[11px] font-mono text-accent">{fitnessData.fitnessHistory.length} nesil</span>
+              </div>
+              <FitnessChart history={fitnessData.fitnessHistory} />
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-white/20">Nesil 1</span>
+                <span className="text-[10px] text-white/20">Nesil {fitnessData.fitnessHistory.length}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Calendar */}
       {status === "success" && entries.length > 0 && (

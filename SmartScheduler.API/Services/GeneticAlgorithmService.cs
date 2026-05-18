@@ -4,10 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SmartScheduler.API.Services;
 
-/// <summary>
-/// Genetik algoritma ile haftalık ders programı optimizasyonu.
-/// Crossover ve mutation operatörleri Sprint 3'te uygulanacaktır.
-/// </summary>
+public class ScheduleResult
+{
+    public Chromosome Best { get; set; } = new();
+    public List<double> FitnessHistory { get; set; } = [];
+    public int BestGeneration { get; set; }
+    public int TotalGenerations { get; set; }
+}
+
 public class GeneticAlgorithmService
 {
     private readonly AppDbContext _context;
@@ -26,55 +30,59 @@ public class GeneticAlgorithmService
         _context = context;
     }
 
-    public async Task<Chromosome> GenerateScheduleAsync()
+    public async Task<ScheduleResult> GenerateScheduleAsync()
     {
         var courses = await _context.Courses.Include(c => c.Instructor).ToListAsync();
         var classrooms = await _context.Classrooms.ToListAsync();
 
         if (!courses.Any() || !classrooms.Any())
-            return new Chromosome();
+            return new ScheduleResult { Best = new Chromosome() };
 
-        // İlk nesil popülasyon oluştur
         var population = Enumerable.Range(0, PopulationSize)
             .Select(_ => CreateRandomChromosome(courses, classrooms))
             .ToList();
 
         Chromosome best = population[0];
+        var fitnessHistory = new List<double>();
+        int bestGeneration = 0;
 
         for (int gen = 0; gen < MaxGenerations; gen++)
         {
-            // Fitness hesapla
             foreach (var chr in population)
                 chr.Fitness = CalculateFitness(chr);
 
-            // En iyiyi kaydet
             var currentBest = population.MaxBy(c => c.Fitness)!;
             if (currentBest.Fitness > best.Fitness)
+            {
                 best = currentBest.Clone();
+                bestGeneration = gen + 1;
+            }
 
-            // Erken çıkış — çakışma yok
+            fitnessHistory.Add(Math.Round(best.Fitness, 4));
+
             if (best.Fitness >= 1.0) break;
 
-            // Yeni nesil
-            var newPopulation = new List<Chromosome> { best.Clone() }; // Elitism
-
+            var newPopulation = new List<Chromosome> { best.Clone() };
             while (newPopulation.Count < PopulationSize)
             {
                 var parent1 = TournamentSelect(population);
                 var parent2 = TournamentSelect(population);
-
                 var child = _random.NextDouble() < CrossoverRate
                     ? Crossover(parent1, parent2)
                     : parent1.Clone();
-
                 Mutate(child);
                 newPopulation.Add(child);
             }
-
             population = newPopulation;
         }
 
-        return best;
+        return new ScheduleResult
+        {
+            Best = best,
+            FitnessHistory = fitnessHistory,
+            BestGeneration = bestGeneration,
+            TotalGenerations = fitnessHistory.Count
+        };
     }
 
     private Chromosome CreateRandomChromosome(

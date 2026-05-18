@@ -8,7 +8,7 @@ using SmartScheduler.API.Repositories;
 using SmartScheduler.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://0.0.0.0:5050");
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 // EF Core + PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
