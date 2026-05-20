@@ -58,9 +58,9 @@ SmartScheduler, üniversite bölümlerinin ders programı oluşturma sürecini o
 SmartScheduler.API/
 ├── Controllers/          → HTTP endpoint'leri, request/response
 ├── Services/             → İş mantığı, algoritma servisleri  
-├── Models/               → Domain entity'leri
+├── Models/               → Domain entity'leri (Constraint, Course, vb.)
 ├── DTOs/                 → Data Transfer Objects
-├── Data/                 → DbContext, repository'ler
+├── Data/                 → AppDbContext
 └── Migrations/           → EF Core migration'ları
 
 smartscheduler-frontend/
@@ -70,8 +70,10 @@ smartscheduler-frontend/
 │   ├── courses/          → Ders yönetimi
 │   ├── instructors/      → Hoca yönetimi
 │   ├── classrooms/       → Sınıf yönetimi
-│   └── schedule/         → Program oluşturucu (Sprint 3)
-└── components/           → Yeniden kullanılabilir UI bileşenleri
+│   ├── constraints/      → Kısıt tanımları (Sprint 3)
+│   └── schedule/         → Program oluşturucu
+└── lib/
+    └── api.ts            → Merkezi API istemcisi (apiFetch)
 ```
 
 ---
@@ -149,36 +151,55 @@ smartscheduler-frontend/
 
 ## 6. API Endpoint'leri
 
-### Sprint 1 (Mevcut — In-Memory)
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| GET | `/api/health` | Sistem sağlık kontrolü |
-| GET | `/api/courses` | Tüm dersleri listele |
-| GET | `/api/courses/{id}` | Ders detayı |
-| GET | `/api/instructors` | Tüm hocaları listele |
-| GET | `/api/instructors/{id}` | Hoca detayı |
-| GET | `/api/classrooms` | Tüm sınıfları listele |
-| GET | `/api/classrooms/{id}` | Sınıf detayı |
+### Auth
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| POST | `/api/auth/register` | — | Kullanıcı kaydı |
+| POST | `/api/auth/login` | — | JWT ile giriş |
 
-### Sprint 2 (Planlanıyor — PostgreSQL)
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| POST | `/api/courses` | Yeni ders ekle |
-| PUT | `/api/courses/{id}` | Ders güncelle |
-| DELETE | `/api/courses/{id}` | Ders sil |
-| POST | `/api/instructors` | Yeni hoca ekle |
-| POST | `/api/classrooms` | Yeni sınıf ekle |
-| POST | `/api/auth/login` | JWT ile giriş |
-| POST | `/api/auth/register` | Kullanıcı kaydı |
+### Courses
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/courses` | — | Tüm dersleri listele |
+| GET | `/api/courses/{id}` | — | Ders detayı |
+| POST | `/api/courses` | JWT | Yeni ders ekle |
+| PUT | `/api/courses/{id}` | JWT | Ders güncelle |
+| DELETE | `/api/courses/{id}` | JWT | Ders sil |
 
-### Sprint 3 (Planlanıyor — Algoritma)
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| POST | `/api/schedule/generate` | Program oluştur (algoritma tetikle) |
-| GET | `/api/schedule` | Tüm programları listele |
-| GET | `/api/schedule/{id}` | Program detayı |
-| GET | `/api/schedule/{id}/export/pdf` | PDF export |
-| GET | `/api/schedule/{id}/export/excel` | Excel export |
+### Instructors
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/instructors` | — | Tüm hocaları listele |
+| GET | `/api/instructors/{id}` | — | Hoca detayı |
+| POST | `/api/instructors` | JWT | Yeni hoca ekle |
+| PUT | `/api/instructors/{id}` | JWT | Hoca güncelle |
+| DELETE | `/api/instructors/{id}` | JWT | Hoca sil |
+
+### Classrooms
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/classrooms` | — | Tüm derslikleri listele |
+| GET | `/api/classrooms/{id}` | — | Derslik detayı |
+| POST | `/api/classrooms` | JWT | Yeni derslik ekle |
+| PUT | `/api/classrooms/{id}` | JWT | Derslik güncelle |
+| DELETE | `/api/classrooms/{id}` | JWT | Derslik sil |
+
+### Constraints (Sprint 3)
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/constraints` | — | Tüm kısıtları listele |
+| POST | `/api/constraints` | JWT | Yeni kısıt ekle (409 mükerrer) |
+| DELETE | `/api/constraints/{id}` | JWT | Kısıt sil |
+
+### Schedule
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| POST | `/api/schedule/generate` | — | Genetik algoritma ile program üret |
+
+### System
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/health` | — | Sistem sağlık kontrolü |
 
 ---
 
@@ -219,13 +240,13 @@ Fitness = 1 / (1 + ihlal_sayısı × ağırlık)
 
 ---
 
-## 8. Güvenlik (Sprint 2'de Uygulanacak)
+## 8. Güvenlik
 
-- **Authentication:** JWT Bearer Token
+- **Authentication:** JWT Bearer Token (Sprint 2'de uygulandı)
 - **Authorization:** Role-based (Admin, User)
 - **CORS:** Whitelist tabanlı origin kontrolü
 - **HTTPS:** Production'da zorunlu
-- **Input Validation:** FluentValidation ile
+- **Password Hashing:** BCrypt
 
 ---
 
@@ -233,11 +254,11 @@ Fitness = 1 / (1 + ihlal_sayısı × ağırlık)
 
 | Sprint | Hedef | Durum |
 |--------|-------|-------|
-| Sunum 1 | Planlama & Scrum geçişi | ✅ Bitti |
-| Sprint 1 | Kurulum & API temelleri | 🔄 Devam ediyor |
-| Sprint 2 | Algoritma + CRUD + Auth | ⏳ Yaklaşan |
-| Sprint 3 | Dashboard & Takvim & Entegrasyon | ⏳ Yaklaşan |
-| Sprint 4 | Test & Deploy & Final Demo | ⏳ Yaklaşan |
+| Sunum 1 | Planlama & Scrum geçişi | ✅ Tamamlandı |
+| Sprint 1 | Kurulum & API temelleri & PostgreSQL | ✅ Tamamlandı |
+| Sprint 2 | JWT Auth · CRUD · Genetik Algoritma | ✅ Tamamlandı |
+| Sprint 3 | Kısıtlar · Müsaitlik · API Hata Yönetimi · Test | ✅ Tamamlandı |
+| Sprint 4 | Deploy · Final Demo | 🔄 Devam Ediyor |
 
 ---
 

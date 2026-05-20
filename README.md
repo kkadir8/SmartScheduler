@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Status](https://img.shields.io/badge/status-Sprint%202%20✓-green)]()
+[![Status](https://img.shields.io/badge/status-Sprint%203%20✓-green)]()
 [![CI](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml)
 
 **Ekip:** DevArchitechs | **Ders:** Yazılım Projesi Geliştirme 2025-2026 Bahar | **Metodoloji:** Scrum (4 Sprint)  
@@ -67,7 +67,6 @@ npm run dev
 └─────────────────┬───────────────────────┘
 ┌─────────────────▼───────────────────────┐
 │   Data Access Layer                     │
-│   Repository Pattern · Unit of Work     │
 │   Entity Framework Core 9              │
 └─────────────────┬───────────────────────┘
 ┌─────────────────▼───────────────────────┐
@@ -88,6 +87,7 @@ npm run dev
 | `/instructors` | Öğretim görevlileri — CRUD (giriş gerekli) |
 | `/classrooms` | Derslikler — CRUD (giriş gerekli) |
 | `/schedule` | Program oluşturucu — genetik algoritma |
+| `/constraints` | Ders–derslik kısıt tanımları |
 
 ---
 
@@ -116,6 +116,15 @@ POST   /api/classrooms                          [Authorize]
 PUT    /api/classrooms/{id}                     [Authorize]
 DELETE /api/classrooms/{id}                     [Authorize]
 
+# Constraints
+GET    /api/constraints                         → Kısıt listesi
+POST   /api/constraints                         [Authorize]
+DELETE /api/constraints/{id}                    [Authorize]
+
+# Instructor Availability
+GET    /api/instructors/{id}/availability       → Müsaitlik takvimi
+PUT    /api/instructors/{id}/availability       [Authorize]
+
 # Schedule
 POST   /api/schedule/generate                   [Authorize]
 → Genetik algoritma ile program üretir
@@ -134,7 +143,6 @@ GET    /api/health          → Sistem durumu
 | Backend | ASP.NET Core 9, C# |
 | Authentication | JWT Bearer Token, BCrypt |
 | ORM | Entity Framework Core 9 |
-| Veri Erişimi | Repository Pattern, Unit of Work |
 | Algoritma | Genetik Algoritma (crossover, mutation, fitness) |
 | Veritabanı | PostgreSQL 16 |
 | API Dokümantasyon | Swagger / OpenAPI |
@@ -153,11 +161,11 @@ SmartScheduler/
 │   │   ├── CoursesController.cs
 │   │   ├── InstructorsController.cs
 │   │   ├── ClassroomsController.cs
+│   │   ├── ConstraintsController.cs
 │   │   └── ScheduleController.cs
 │   ├── Models/
 │   │   ├── Algorithm/        # Gene, Chromosome
 │   │   └── Auth/             # LoginRequest, RegisterRequest, AuthResponse
-│   ├── Repositories/         # Repository Pattern + Unit of Work
 │   ├── Services/
 │   │   ├── AuthService.cs
 │   │   └── GeneticAlgorithmService.cs
@@ -170,12 +178,15 @@ SmartScheduler/
 │       ├── register/
 │       ├── context/          # AuthContext (JWT)
 │       ├── components/
-│       │   └── modals/       # CourseModal, InstructorModal, ClassroomModal
+│       │   └── modals/       # CourseModal, InstructorModal, ClassroomModal, AvailabilityModal
 │       ├── dashboard/
 │       ├── courses/
 │       ├── instructors/
 │       ├── classrooms/
+│       ├── constraints/
 │       └── schedule/
+│   └── lib/
+│       └── api.ts            # Merkezi API istemcisi (apiFetch)
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   └── DATABASE_SCHEMA.md
@@ -191,20 +202,18 @@ SmartScheduler/
 | Sunum 1 | Planlama & Scrum | ✅ Tamamlandı |
 | Sprint 1 | Kurulum · PostgreSQL · API · Frontend | ✅ Tamamlandı |
 | Sprint 2 | JWT Auth · CRUD · Repository · Genetik Algoritma | ✅ Tamamlandı |
-| Sprint 3 | Program Oluştur UI · Takvim · Test | 🔄 Devam Ediyor |
-| Sprint 4 | Deploy · Final Demo | ⏳ Yaklaşan |
+| Sprint 3 | Kısıtlar · Müsaitlik · Takvim · API Hata Yönetimi · Test | ✅ Tamamlandı |
+| Sprint 4 | Deploy · Final Demo | 🔄 Devam Ediyor |
 
-### Sprint 2 Tamamlanan Özellikler
-- ✅ JWT Authentication & BCrypt şifreleme
-- ✅ Repository Pattern & Unit of Work
-- ✅ CRUD API endpoint'leri (POST / PUT / DELETE)
-- ✅ Login / Register sayfaları
-- ✅ Admin CRUD modal'ları (Dersler, Hocalar, Sınıflar)
-- ✅ AuthContext & JWT token yönetimi (frontend)
-- ✅ Genetik algoritma servisi (crossover, mutation, fitness, tournament selection)
-- ✅ `/api/schedule/generate` endpoint'i
-- ✅ GitHub Actions CI/CD pipeline
-- ✅ Docker multi-container build
+### Sprint 3 Tamamlanan Özellikler
+- ✅ Kısıt sayfası — ders–derslik eşleştirme UI
+- ✅ Kısıt API endpoint'leri (GET / POST / DELETE)
+- ✅ Hoca müsaitlik takvimi (AvailabilityModal — haftalık grid)
+- ✅ Haftalık program takvim görünümü
+- ✅ Merkezi API istemcisi (`lib/api.ts` — apiFetch + 401 yönetimi)
+- ✅ Modal satır içi hata bildirimleri
+- ✅ Genetik algoritma fitness score & nesil sayısı görselleştirme
+- ✅ Test senaryoları yazımı (TS-01..TS-15)
 
 ---
 
@@ -224,6 +233,7 @@ SmartScheduler/
 
 - [Mimari Tasarım](docs/ARCHITECTURE.md)
 - [Veritabanı Şeması](docs/DATABASE_SCHEMA.md)
+- [Test Senaryoları](docs/TEST_SCENARIOS.md)
 - [API Dokümantasyonu](http://localhost:5001/swagger) (Docker ile çalışırken)
 
 ---

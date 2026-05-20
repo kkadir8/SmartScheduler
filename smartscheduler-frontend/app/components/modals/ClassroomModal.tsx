@@ -23,6 +23,7 @@ export default function ClassroomModal({ classroom, onSave, onClose }: Props) {
     name: "", building: "", capacity: 30, hasLab: false, hasProjector: true
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (classroom) setForm(classroom);
@@ -31,8 +32,14 @@ export default function ClassroomModal({ classroom, onSave, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await onSave(form);
-    setLoading(false);
+    setError("");
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -81,6 +88,12 @@ export default function ClassroomModal({ classroom, onSave, onClose }: Props) {
               </label>
             ))}
           </div>
+
+          {error && (
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs text-rose-300">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}

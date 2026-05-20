@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { Search, Plus, ShieldCheck, Trash2, BookOpen, Building2 } from "lucide-react";
 import ApiError from "../components/ApiError";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../lib/api";
 
 interface Constraint {
   id: number;
@@ -66,31 +65,20 @@ function AddConstraintModal({ courses, classrooms, token, onSaved, onClose }: Ad
     }
     setSaving(true);
     setError("");
-    try {
-      const res = await fetch(`${API_BASE}/api/constraints`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ courseId, classroomId, notes: notes || null }),
-      });
-      if (res.status === 409) {
-        setError("Bu ders-derslik kısıtı zaten mevcut.");
-        return;
-      }
-      if (!res.ok) {
-        const text = await res.text();
-        setError(text || `Hata: ${res.status}`);
-        return;
-      }
-      onSaved();
-      onClose();
-    } catch {
-      setError("Sunucuya bağlanılamadı.");
-    } finally {
+    const result = await apiFetch("/api/constraints", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ courseId, classroomId, notes: notes || null }),
+    });
+    if (result.error) {
+      const isConflict = "status" in result && result.status === 409;
+      setError(isConflict ? "Bu ders-derslik kısıtı zaten mevcut." : result.error);
       setSaving(false);
+      return;
     }
+    setSaving(false);
+    onSaved();
+    onClose();
   };
 
   return (
@@ -184,42 +172,41 @@ function AddConstraintModal({ courses, classrooms, token, onSaved, onClose }: Ad
 }
 
 export default function ConstraintsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+
+  const api = <T,>(endpoint: string, options?: RequestInit) =>
+    apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
 
   const fetchAll = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const [cRes, crRes, clRes] = await Promise.all([
-        fetch(`${API_BASE}/api/constraints`),
-        fetch(`${API_BASE}/api/courses`),
-        fetch(`${API_BASE}/api/classrooms`),
-      ]);
-      setConstraints(await cRes.json());
-      setCourses(await crRes.json());
-      setClassrooms(await clRes.json());
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    const [cResult, crResult, clResult] = await Promise.all([
+      api<Constraint[]>("/api/constraints"),
+      api<Course[]>("/api/courses"),
+      api<Classroom[]>("/api/classrooms"),
+    ]);
+    if (cResult.error) { setError(true); setLoading(false); return; }
+    setConstraints(cResult.data ?? []);
+    setCourses(crResult.data ?? []);
+    setClassrooms(clResult.data ?? []);
+    setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (id: number) => {
     if (!confirm("Bu kısıtı silmek istediğinizden emin misiniz?")) return;
-    await fetch(`${API_BASE}/api/constraints/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${user?.token}` },
-    });
+    setDeleteError("");
+    const { error: err } = await api(`/api/constraints/${id}`, { method: "DELETE" });
+    if (err) { setDeleteError(err); return; }
     fetchAll();
   };
 
@@ -259,6 +246,13 @@ export default function ConstraintsPage() {
           </button>
         )}
       </div>
+
+      {deleteError && (
+        <div className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-rose-300">{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="text-rose-300/50 hover:text-rose-300 ml-3 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {/* Info banner */}
       <div className="flex items-start gap-3 bg-accent/5 border border-accent/15 rounded-xl px-4 py-3">

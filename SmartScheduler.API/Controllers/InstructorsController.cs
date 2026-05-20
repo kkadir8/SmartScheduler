@@ -6,6 +6,8 @@ using SmartScheduler.API.Models;
 
 namespace SmartScheduler.API.Controllers;
 
+public record AvailabilitySlot(int DayOfWeek, int Hour);
+
 [ApiController]
 [Route("api/[controller]")]
 public class InstructorsController(AppDbContext db) : ControllerBase
@@ -60,6 +62,38 @@ public class InstructorsController(AppDbContext db) : ControllerBase
         var instructor = await db.Instructors.FindAsync(id);
         if (instructor is null) return NotFound();
         db.Instructors.Remove(instructor);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("{id}/availability")]
+    public async Task<IActionResult> GetAvailability(int id)
+    {
+        if (!await db.Instructors.AnyAsync(i => i.Id == id)) return NotFound();
+        var slots = await db.InstructorAvailabilities
+            .Where(a => a.InstructorId == id)
+            .Select(a => new { a.DayOfWeek, a.Hour })
+            .ToListAsync();
+        return Ok(slots);
+    }
+
+    [HttpPut("{id}/availability")]
+    [Authorize]
+    public async Task<IActionResult> UpdateAvailability(int id, [FromBody] List<AvailabilitySlot> slots)
+    {
+        if (!await db.Instructors.AnyAsync(i => i.Id == id)) return NotFound();
+
+        var existing = await db.InstructorAvailabilities
+            .Where(a => a.InstructorId == id).ToListAsync();
+        db.InstructorAvailabilities.RemoveRange(existing);
+
+        db.InstructorAvailabilities.AddRange(slots.Select(s => new InstructorAvailability
+        {
+            InstructorId = id,
+            DayOfWeek = s.DayOfWeek,
+            Hour = s.Hour,
+        }));
+
         await db.SaveChangesAsync();
         return NoContent();
     }

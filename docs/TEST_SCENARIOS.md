@@ -205,4 +205,4 @@
 | TS-14 | GET /api/constraints/course/{id} | ✅ Listeleme | 200 |
 | TS-15 | POST /api/schedule/generate | ✅ Algoritma çalışıyor | 200 |
 
-**Toplam: 15 test senaryosu** (Auth: 5 · CRUD: 7 · Algoritma: 1 · Kısıt: 2)
+**Toplam: 15 test senaryosu** (Auth: 5 · CRUD: 5 · Kısıt: 4 · Algoritma: 1)

@@ -6,8 +6,7 @@ import ApiError from "../components/ApiError";
 import InstructorModal from "../components/modals/InstructorModal";
 import AvailabilityModal from "../components/modals/AvailabilityModal";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../lib/api";
 
 interface Instructor {
   id: number;
@@ -52,40 +51,33 @@ function SkeletonCard() {
 }
 
 export default function InstructorsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editInstructor, setEditInstructor] = useState<Instructor | null>(null);
   const [availabilityTarget, setAvailabilityTarget] = useState<Instructor | null>(null);
 
+  const api = <T,>(endpoint: string, options?: RequestInit) =>
+    apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
+
   const fetchInstructors = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const res = await fetch(`${API_BASE}/api/instructors`);
-      const data = await res.json();
-      setInstructors(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    const { data, error: err } = await api<Instructor[]>("/api/instructors");
+    if (err) { setError(true); } else { setInstructors(data ?? []); }
+    setLoading(false);
   };
 
-  useEffect(() => { fetchInstructors(); }, []);
-
-  const token = user?.token;
+  useEffect(() => { fetchInstructors(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async (instructor: { id?: number; name: string; title: string; department: string; email: string }) => {
     const method = instructor.id ? "PUT" : "POST";
-    const url = instructor.id ? `${API_BASE}/api/instructors/${instructor.id}` : `${API_BASE}/api/instructors`;
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(instructor),
-    });
+    const endpoint = instructor.id ? `/api/instructors/${instructor.id}` : "/api/instructors";
+    const { error: err } = await api(endpoint, { method, body: JSON.stringify(instructor) });
+    if (err) throw new Error(err);
     setShowModal(false);
     setEditInstructor(null);
     fetchInstructors();
@@ -93,10 +85,9 @@ export default function InstructorsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Bu hocayı silmek istediğinizden emin misiniz?")) return;
-    await fetch(`${API_BASE}/api/instructors/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    setDeleteError("");
+    const { error: err } = await api(`/api/instructors/${id}`, { method: "DELETE" });
+    if (err) { setDeleteError(err); return; }
     fetchInstructors();
   };
 
@@ -123,6 +114,13 @@ export default function InstructorsPage() {
           )}
         </div>
       </div>
+
+      {deleteError && (
+        <div className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-rose-300">{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="text-rose-300/50 hover:text-rose-300 ml-3 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {error ? (
         <ApiError onRetry={fetchInstructors} />

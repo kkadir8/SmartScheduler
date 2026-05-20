@@ -11,7 +11,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Schedule>     Schedules      => Set<Schedule>();
     public DbSet<ScheduleEntry> ScheduleEntries => Set<ScheduleEntry>();
     public DbSet<AppUser>      Users          => Set<AppUser>();
-    public DbSet<Constraint>   Constraints    => Set<Constraint>();
+    public DbSet<Constraint>            Constraints             => Set<Constraint>();
+    public DbSet<InstructorAvailability> InstructorAvailabilities => Set<InstructorAvailability>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +22,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Instructor>(e =>
         {
             e.HasIndex(i => i.Email).IsUnique();
+        });
+
+        // ── InstructorAvailability ───────────────────────────────────────
+        modelBuilder.Entity<InstructorAvailability>(e =>
+        {
+            e.HasOne(a => a.Instructor)
+             .WithMany()
+             .HasForeignKey(a => a.InstructorId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // Aynı hoca için aynı gün/saat çifti bir kez tanımlanabilir
+            e.HasIndex(a => new { a.InstructorId, a.DayOfWeek, a.Hour }).IsUnique();
         });
 
         // ── Course ──────────────────────────────────────────────────────

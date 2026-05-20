@@ -25,6 +25,11 @@ public class GeneticAlgorithmService
         [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
          DayOfWeek.Thursday, DayOfWeek.Friday];
 
+    // Her run başında doldurulur, tüm private metodlar paylaşır
+    private Dictionary<int, List<int>> _constraintMap = [];
+    private Dictionary<int, int> _classroomCapacities = [];
+    private Dictionary<int, int> _courseSizes = [];
+
     public GeneticAlgorithmService(AppDbContext context)
     {
         _context = context;
@@ -34,6 +39,14 @@ public class GeneticAlgorithmService
     {
         var courses = await _context.Courses.Include(c => c.Instructor).ToListAsync();
         var classrooms = await _context.Classrooms.ToListAsync();
+
+        // Constraint lookup: courseId → izin verilen classroomId listesi
+        _constraintMap = (await _context.Constraints.ToListAsync())
+            .GroupBy(c => c.CourseId)
+            .ToDictionary(g => g.Key, g => g.Select(c => c.ClassroomId).ToList());
+
+        _classroomCapacities = classrooms.ToDictionary(c => c.Id, c => c.Capacity);
+        _courseSizes = courses.ToDictionary(c => c.Id, c => c.StudentCount);
 
         if (!courses.Any() || !classrooms.Any())
             return new ScheduleResult { Best = new Chromosome() };
@@ -89,13 +102,22 @@ public class GeneticAlgorithmService
         List<Models.Course> courses,
         List<Models.Classroom> classrooms)
     {
-        var genes = courses.Select(course => new Gene(
-            courseId: course.Id,
-            instructorId: course.InstructorId,
-            classroomId: classrooms[_random.Next(classrooms.Count)].Id,
-            day: WorkDays[_random.Next(WorkDays.Length)],
-            timeSlot: _random.Next(10)
-        )).ToList();
+        var genes = courses.Select(course =>
+        {
+            int classroomId;
+            if (_constraintMap.TryGetValue(course.Id, out var allowed) && allowed.Count > 0)
+                classroomId = allowed[_random.Next(allowed.Count)];
+            else
+                classroomId = classrooms[_random.Next(classrooms.Count)].Id;
+
+            return new Gene(
+                courseId: course.Id,
+                instructorId: course.InstructorId,
+                classroomId: classroomId,
+                day: WorkDays[_random.Next(WorkDays.Length)],
+                timeSlot: _random.Next(10)
+            );
+        }).ToList();
 
         return new Chromosome(genes);
     }
@@ -105,6 +127,15 @@ public class GeneticAlgorithmService
         int conflicts = 0;
         var genes = chromosome.Genes;
 
+        // Kapasite ihlalleri (her gene için bağımsız kontrol)
+        foreach (var gene in genes)
+        {
+            if (_classroomCapacities.TryGetValue(gene.ClassroomId, out var cap) &&
+                _courseSizes.TryGetValue(gene.CourseId, out var size) && size > cap)
+                conflicts++;
+        }
+
+        // Zaman dilimi çakışmaları
         for (int i = 0; i < genes.Count; i++)
         {
             for (int j = i + 1; j < genes.Count; j++)
@@ -124,7 +155,6 @@ public class GeneticAlgorithmService
         return 1.0 / (1.0 + conflicts);
     }
 
-    /// <summary>Tek-nokta crossover operatörü</summary>
     private Chromosome Crossover(Chromosome p1, Chromosome p2)
     {
         if (p1.Genes.Count == 0) return p2.Clone();
@@ -136,7 +166,6 @@ public class GeneticAlgorithmService
         return new Chromosome(childGenes);
     }
 
-    /// <summary>Rastgele gen mutasyon operatörü</summary>
     private void Mutate(Chromosome chromosome)
     {
         foreach (var gene in chromosome.Genes)

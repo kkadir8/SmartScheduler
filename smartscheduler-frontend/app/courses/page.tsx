@@ -6,8 +6,7 @@ import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
 import CourseModal from "../components/modals/CourseModal";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../lib/api";
 
 interface Course {
   id: number;
@@ -41,62 +40,45 @@ function SkeletonRow() {
 }
 
 export default function CoursesPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<keyof Course>("code");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showModal, setShowModal] = useState(false);
   const [editCourse, setEditCourse] = useState<Course | null>(null);
 
+  const api = <T,>(endpoint: string, options?: RequestInit) =>
+    apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
+
   const fetchCourses = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const res = await fetch(`${API_BASE}/api/courses`);
-      const data = await res.json();
-      setCourses(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    const { data, error: err } = await api<Course[]>("/api/courses");
+    if (err) { setError(true); } else { setCourses(data ?? []); }
+    setLoading(false);
   };
 
   const fetchInstructors = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/instructors`);
-      const data = await res.json();
-      setInstructors(data);
-    } catch {}
+    const { data } = await api<Instructor[]>("/api/instructors");
+    if (data) setInstructors(data);
   };
 
   useEffect(() => {
     fetchCourses();
     fetchInstructors();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const token = user?.token;
-
   const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
-    if (!course.instructorId) {
-      alert("Lütfen bir öğretim görevlisi seçin.");
-      return;
-    }
     const method = course.id ? "PUT" : "POST";
-    const url = course.id ? `${API_BASE}/api/courses/${course.id}` : `${API_BASE}/api/courses`;
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(course),
-    });
-    if (!res.ok) {
-      alert(`Hata: ${res.status} — ${await res.text()}`);
-      return;
-    }
+    const endpoint = course.id ? `/api/courses/${course.id}` : "/api/courses";
+    const { error: err } = await api(endpoint, { method, body: JSON.stringify(course) });
+    if (err) throw new Error(err);
     setShowModal(false);
     setEditCourse(null);
     fetchCourses();
@@ -104,10 +86,9 @@ export default function CoursesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Bu dersi silmek istediğinizden emin misiniz?")) return;
-    await fetch(`${API_BASE}/api/courses/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    setDeleteError("");
+    const { error: err } = await api(`/api/courses/${id}`, { method: "DELETE" });
+    if (err) { setDeleteError(err); return; }
     fetchCourses();
   };
 
@@ -181,6 +162,14 @@ export default function CoursesPage() {
           </button>
         )}
       </div>
+
+      {/* Delete error banner */}
+      {deleteError && (
+        <div className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-rose-300">{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="text-rose-300/50 hover:text-rose-300 ml-3 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">

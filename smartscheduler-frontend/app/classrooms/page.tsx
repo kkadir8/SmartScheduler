@@ -6,8 +6,7 @@ import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
 import ClassroomModal from "../components/modals/ClassroomModal";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../lib/api";
 
 interface Classroom {
   id: number;
@@ -39,39 +38,32 @@ function SkeletonRow() {
 }
 
 export default function ClassroomsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editClassroom, setEditClassroom] = useState<Classroom | null>(null);
+
+  const api = <T,>(endpoint: string, options?: RequestInit) =>
+    apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
 
   const fetchClassrooms = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const res = await fetch(`${API_BASE}/api/classrooms`);
-      const data = await res.json();
-      setClassrooms(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    const { data, error: err } = await api<Classroom[]>("/api/classrooms");
+    if (err) { setError(true); } else { setClassrooms(data ?? []); }
+    setLoading(false);
   };
 
-  useEffect(() => { fetchClassrooms(); }, []);
-
-  const token = user?.token;
+  useEffect(() => { fetchClassrooms(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async (classroom: { id?: number; name: string; building: string; capacity: number; hasLab: boolean; hasProjector: boolean }) => {
     const method = classroom.id ? "PUT" : "POST";
-    const url = classroom.id ? `${API_BASE}/api/classrooms/${classroom.id}` : `${API_BASE}/api/classrooms`;
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(classroom),
-    });
+    const endpoint = classroom.id ? `/api/classrooms/${classroom.id}` : "/api/classrooms";
+    const { error: err } = await api(endpoint, { method, body: JSON.stringify(classroom) });
+    if (err) throw new Error(err);
     setShowModal(false);
     setEditClassroom(null);
     fetchClassrooms();
@@ -79,10 +71,9 @@ export default function ClassroomsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Bu sınıfı silmek istediğinizden emin misiniz?")) return;
-    await fetch(`${API_BASE}/api/classrooms/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    setDeleteError("");
+    const { error: err } = await api(`/api/classrooms/${id}`, { method: "DELETE" });
+    if (err) { setDeleteError(err); return; }
     fetchClassrooms();
   };
 
@@ -120,6 +111,13 @@ export default function ClassroomsPage() {
           )}
         </div>
       </div>
+
+      {deleteError && (
+        <div className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-rose-300">{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="text-rose-300/50 hover:text-rose-300 ml-3 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {error ? (
         <ApiError onRetry={fetchClassrooms} />

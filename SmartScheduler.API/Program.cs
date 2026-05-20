@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SmartScheduler.API.Data;
-using SmartScheduler.API.Repositories;
 using SmartScheduler.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,10 +12,6 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
 // EF Core + PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Repository Pattern
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
 // Auth & Algorithm Services
 builder.Services.AddScoped<AuthService>();

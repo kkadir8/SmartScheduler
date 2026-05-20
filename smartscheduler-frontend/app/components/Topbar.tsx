@@ -35,7 +35,7 @@ export default function Topbar() {
 
         <div className="hidden sm:flex items-center gap-1.5 bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
           <Zap size={10} className="text-accent" />
-          <span className="text-[11px] text-accent font-semibold">Sprint 2</span>
+          <span className="text-[11px] text-accent font-semibold">Sprint 3</span>
         </div>
 
         <a href="https://github.com/kkadir8/SmartScheduler" target="_blank" rel="noopener noreferrer"

@@ -64,6 +64,7 @@ function CustomSelect({ value, onChange }: { value: string; onChange: (v: string
 export default function InstructorModal({ instructor, onSave, onClose }: Props) {
   const [form, setForm] = useState<Instructor>({ name: "", title: "Dr.", department: "", email: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -72,8 +73,14 @@ export default function InstructorModal({ instructor, onSave, onClose }: Props) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await onSave(form);
-    setLoading(false);
+    setError("");
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fields = [
@@ -114,6 +121,12 @@ export default function InstructorModal({ instructor, onSave, onClose }: Props) 
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all" />
             </div>
           ))}
+
+          {error && (
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs text-rose-300">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}

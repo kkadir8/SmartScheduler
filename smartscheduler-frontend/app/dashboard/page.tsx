@@ -18,8 +18,7 @@ import {
 import MetricCard from "../components/MetricCard";
 import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../lib/api";
 
 const teamMembers = [
   { name: "Abdulkadir Gedik", role: "Product Owner", initials: "AG", color: "bg-blue-600" },
@@ -30,47 +29,45 @@ const teamMembers = [
 ];
 
 const sprintTasks = [
-  { text: "JWT Authentication & BCrypt şifreleme", done: true },
-  { text: "Repository Pattern & Unit of Work", done: true },
-  { text: "CRUD API endpoint'leri (POST/PUT/DELETE)", done: true },
-  { text: "Login / Register sayfaları", done: true },
-  { text: "Admin CRUD modal'ları (Dersler, Hocalar, Sınıflar)", done: true },
-  { text: "AuthContext & JWT token yönetimi", done: true },
-  { text: "Genetik algoritma servisi (crossover, mutation)", done: true },
-  { text: "Program oluşturma endpoint'i", done: true },
-  { text: "GitHub Actions CI/CD pipeline", done: true },
-  { text: "Docker multi-container build", done: true },
+  { text: "Kısıt sayfası (ders–derslik eşleştirme UI)", done: true },
+  { text: "Kısıt API endpoint'leri (GET/POST/DELETE)", done: true },
+  { text: "Hocanın müsaitlik takvimi (AvailabilityModal)", done: true },
+  { text: "Haftalık program takvim görünümü", done: true },
+  { text: "Merkezi API istemcisi (apiFetch + hata yönetimi)", done: true },
+  { text: "Modal satır içi hata bildirimleri", done: true },
+  { text: "Genetik algoritma fitness görselleştirme", done: true },
+  { text: "Test senaryoları yazımı (TS-01..TS-15)", done: true },
 ];
 
 const activities = [
   {
     icon: Cpu,
-    text: "Genetik algoritma servisi tamamlandı — crossover, mutation, fitness",
-    time: "2 saat önce",
+    text: "Fitness score & nesil sayısı görselleştirme eklendi",
+    time: "1 gün önce",
     color: "text-emerald-400",
   },
   {
     icon: Layers,
-    text: "Login/Register sayfaları & CRUD modal'ları eklendi",
-    time: "3 saat önce",
+    text: "Test senaryoları yazımı tamamlandı (TS-01..TS-15)",
+    time: "1 gün önce",
     color: "text-purple-400",
   },
   {
     icon: GitCommit,
-    text: "JWT Auth middleware & BCrypt entegrasyonu tamamlandı",
-    time: "5 saat önce",
+    text: "Merkezi API istemcisi & hata yönetimi iyileştirmesi",
+    time: "2 gün önce",
     color: "text-blue-400",
   },
   {
     icon: Database,
-    text: "Repository Pattern & Unit of Work implementasyonu",
-    time: "6 saat önce",
+    text: "Kısıt sayfası & müsaitlik modal'ı tamamlandı",
+    time: "3 gün önce",
     color: "text-yellow-400",
   },
   {
     icon: Globe,
-    text: "GitHub Actions CI/CD pipeline kuruldu",
-    time: "1 gün önce",
+    text: "Haftalık program takvim görünümü eklendi",
+    time: "4 gün önce",
     color: "text-accent",
   },
 ];
@@ -101,29 +98,24 @@ export default function DashboardPage() {
   const fetchMetrics = async () => {
     setLoading(true);
     setError(false);
-    try {
-      const [coursesRes, instructorsRes, classroomsRes, healthRes] = await Promise.all([
-        fetch(`${API_BASE}/api/courses`),
-        fetch(`${API_BASE}/api/instructors`),
-        fetch(`${API_BASE}/api/classrooms`),
-        fetch(`${API_BASE}/api/health`),
-      ]);
-      const [courses, instructors, classrooms] = await Promise.all([
-        coursesRes.json(),
-        instructorsRes.json(),
-        classroomsRes.json(),
-      ]);
-      setMetrics({
-        courses: courses.length,
-        instructors: instructors.length,
-        classrooms: classrooms.length,
-        apiOk: healthRes.ok,
-      });
-    } catch {
+    const [coursesResult, instructorsResult, classroomsResult, healthResult] = await Promise.all([
+      apiFetch<unknown[]>("/api/courses"),
+      apiFetch<unknown[]>("/api/instructors"),
+      apiFetch<unknown[]>("/api/classrooms"),
+      apiFetch("/api/health"),
+    ]);
+    if (coursesResult.error || instructorsResult.error || classroomsResult.error) {
       setError(true);
-    } finally {
       setLoading(false);
+      return;
     }
+    setMetrics({
+      courses: (coursesResult.data ?? []).length,
+      instructors: (instructorsResult.data ?? []).length,
+      classrooms: (classroomsResult.data ?? []).length,
+      apiOk: !healthResult.error,
+    });
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -139,7 +131,7 @@ export default function DashboardPage() {
       <div>
         <h2 className="text-xl font-bold text-white">Genel Bakış</h2>
         <p className="text-sm text-white/40 mt-0.5">
-          Sprint 2 — Yazılım Projesi Geliştirme 2025-2026 Bahar
+          Sprint 3 — Yazılım Projesi Geliştirme 2025-2026 Bahar
         </p>
       </div>
 
@@ -189,7 +181,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-cardbg border border-white/[0.06] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-sm font-semibold text-white">Sprint 2 Durumu</h3>
+              <h3 className="text-sm font-semibold text-white">Sprint 3 Durumu</h3>
               <p className="text-xs text-white/40 mt-0.5">
                 {completedTasks}/{sprintTasks.length} görev tamamlandı
               </p>

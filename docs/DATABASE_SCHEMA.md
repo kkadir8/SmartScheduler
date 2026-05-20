@@ -2,7 +2,8 @@
 
 **Veritabanı:** PostgreSQL 16  
 **ORM:** Entity Framework Core 9 (Code-First)  
-**Sprint:** 2'de uygulanacak
+**Güncel Sprint:** 3 (Constraints tablosu eklendi)  
+**Migration Sayısı:** 3 (InitialCreate · Sprint2_Auth_CRUD · Sprint3_Constraints_SeedData)
 
 ---
 
@@ -39,6 +40,14 @@ erDiagram
         datetime CreatedAt
     }
 
+    CONSTRAINT {
+        int     Id              PK
+        int     CourseId        FK
+        int     ClassroomId     FK
+        string  Notes
+        datetime CreatedAt
+    }
+
     SCHEDULE {
         int     Id          PK
         string  Name
@@ -67,10 +76,12 @@ erDiagram
         datetime CreatedAt
     }
 
-    INSTRUCTOR ||--o{ COURSE        : "verir"
+    INSTRUCTOR ||--o{ COURSE         : "verir"
     COURSE     ||--o{ SCHEDULE_ENTRY : "yer alır"
     CLASSROOM  ||--o{ SCHEDULE_ENTRY : "kullanılır"
     SCHEDULE   ||--o{ SCHEDULE_ENTRY : "içerir"
+    COURSE     ||--o{ CONSTRAINT     : "kısıtlanır"
+    CLASSROOM  ||--o{ CONSTRAINT     : "kısıtlar"
 ```
 
 ---
@@ -140,7 +151,19 @@ CREATE TABLE "ScheduleEntries" (
 );
 ```
 
-### User (Kullanıcı — Sprint 2 Auth)
+### Constraint (Kısıt — Sprint 3)
+```sql
+CREATE TABLE "Constraints" (
+    "Id"          SERIAL PRIMARY KEY,
+    "CourseId"    INT NOT NULL REFERENCES "Courses"("Id") ON DELETE CASCADE,
+    "ClassroomId" INT NOT NULL REFERENCES "Classrooms"("Id") ON DELETE CASCADE,
+    "Notes"       TEXT,
+    "CreatedAt"   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE ("CourseId", "ClassroomId")   -- mükerrer kısıt engeli
+);
+```
+
+### User (Kullanıcı)
 ```sql
 CREATE TABLE "Users" (
     "Id"           SERIAL PRIMARY KEY,
@@ -232,16 +255,34 @@ public class ScheduleEntry
 }
 ```
 
+### Constraint.cs (Sprint 3)
+```csharp
+public class Constraint
+{
+    public int Id { get; set; }
+    public int CourseId { get; set; }
+    public Course Course { get; set; } = null!;
+    public int ClassroomId { get; set; }
+    public Classroom Classroom { get; set; } = null!;
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+```
+
 ---
 
-## Seed Data (İlk Migration)
+## Seed Data
 
-Sprint 2'de EF Core migration çalıştırıldığında aşağıdaki test verisi otomatik eklenecek:
+3 migration aşamasında otomatik yüklenen veriler:
 
-- 4 Hoca (mevcut in-memory verisi)
-- 5 Ders (mevcut in-memory verisi)
-- 5 Sınıf (mevcut in-memory verisi)
+| Migration | Eklenen Veriler |
+|-----------|----------------|
+| InitialCreate | Boş şema |
+| Sprint2_Auth_CRUD | 4 Hoca, 5 Ders, 5 Sınıf (temel CRUD test verisi) |
+| Sprint3_Constraints_SeedData | +11 Hoca, +15 Ders, +10 Sınıf, 21 Kısıt |
+
+**Toplam (Sprint 3 sonrası):** 15 hoca · 20 ders · 15 sınıf · 21 kısıt
 
 ---
 
-*DevArchitechs · SmartScheduler · Veritabanı Şema v1.0*
+*DevArchitechs · SmartScheduler · Veritabanı Şema v2.0 (Sprint 3)*
