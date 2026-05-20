@@ -3,6 +3,7 @@
 **Sprint:** 3  
 **Sorumlu:** Burak Kürkçü  
 **Tarih:** 19.05.2026  
+**Durum:** Sprint 3 Sonu  
 **Kapsam:** Auth, CRUD ve Algoritma endpoint'leri için başarılı ve hatalı durum test senaryoları
 
 ---

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Save, Clock } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "../../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
@@ -14,12 +14,14 @@ type AvailabilityMap = Record<number, Set<number>>;
 interface Props { instructor: Instructor; onClose: () => void; }
 
 export default function AvailabilityModal({ instructor, onClose }: Props) {
+  const { user } = useAuth();
   const [availability, setAvailability] = useState<AvailabilityMap>(() =>
     Object.fromEntries(DAYS.map((_, i) => [i, new Set<number>()]))
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -27,16 +29,15 @@ export default function AvailabilityModal({ instructor, onClose }: Props) {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/instructors/${instructor.id}/availability`);
-        if (res.ok) {
-          const data: { dayOfWeek: number; hour: number }[] = await res.json();
-          const map: AvailabilityMap = Object.fromEntries(DAYS.map((_, i) => [i, new Set<number>()]));
-          data.forEach(({ dayOfWeek, hour }) => { map[dayOfWeek]?.add(hour); });
-          setAvailability(map);
-        }
-      } catch {}
-      finally { setLoading(false); }
+      const result = await apiFetch<{ dayOfWeek: number; hour: number }[]>(
+        `/api/instructors/${instructor.id}/availability`
+      );
+      if (!result.error) {
+        const map: AvailabilityMap = Object.fromEntries(DAYS.map((_, i) => [i, new Set<number>()]));
+        (result.data ?? []).forEach(({ dayOfWeek, hour }) => { map[dayOfWeek]?.add(hour); });
+        setAvailability(map);
+      }
+      setLoading(false);
     };
     load();
   }, [instructor.id]);
@@ -61,19 +62,22 @@ export default function AvailabilityModal({ instructor, onClose }: Props) {
 
   const handleSave = async () => {
     setSaving(true);
-    try {
-      const payload: { dayOfWeek: number; hour: number }[] = [];
-      Object.entries(availability).forEach(([day, hours]) => {
-        hours.forEach((hour) => payload.push({ dayOfWeek: Number(day), hour }));
-      });
-      await fetch(`${API_BASE}/api/instructors/${instructor.id}/availability`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    setError("");
+    const payload: { dayOfWeek: number; hour: number }[] = [];
+    Object.entries(availability).forEach(([day, hours]) => {
+      hours.forEach((hour) => payload.push({ dayOfWeek: Number(day), hour }));
+    });
+    const result = await apiFetch(`/api/instructors/${instructor.id}/availability`, {
+      method: "PUT",
+      token: user?.token,
+      body: JSON.stringify(payload),
+    });
+    if (result.error) {
+      setError("Kaydedilemedi. Lütfen tekrar deneyin.");
+    } else {
       setSaved(true);
-    } catch {}
-    finally { setSaving(false); }
+    }
+    setSaving(false);
   };
 
   const totalSlots = Object.values(availability).reduce((sum, hours) => sum + hours.size, 0);
@@ -180,15 +184,22 @@ export default function AvailabilityModal({ instructor, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-white/[0.06] flex-shrink-0">
-          <button onClick={onClose} className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] text-white/70 font-medium py-2.5 rounded-xl transition-all text-sm">
-            İptal
-          </button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
-            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              : saved ? <>✓ Kaydedildi</>
-              : <><Save size={14} />Kaydet</>}
-          </button>
+        <div className="px-5 pb-4 flex-shrink-0">
+          {error && (
+            <div className="mb-3 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs text-rose-300">
+              {error}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] text-white/70 font-medium py-2.5 rounded-xl transition-all text-sm">
+              İptal
+            </button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+              {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : saved ? <>✓ Kaydedildi</>
+                : <><Save size={14} />Kaydet</>}
+            </button>
+          </div>
         </div>
       </div>
     </div>,
