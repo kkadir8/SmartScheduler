@@ -140,10 +140,9 @@ export default function SavedSchedulesPage() {
                       )}
                       <button 
                         onClick={() => window.open(`${API_BASE}/api/export/schedules/${s.id}/pdf`, '_blank')}
-                        className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors ml-1"
-                        title="PDF İndir"
+                        className="px-3 py-1.5 text-xs font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors inline-flex items-center gap-1 ml-1"
                       >
-                        <FileText size={16} />
+                        PDF İndir <FileText size={12} />
                       </button>
                       <button 
                         onClick={() => window.open(`${API_BASE}/api/export/schedules/${s.id}/excel`, '_blank')}

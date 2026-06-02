@@ -456,4 +456,61 @@ public class ExportService
         workbook.SaveAs(ms);
         return ms.ToArray();
     }
+
+    // ─────────────────────────────────────────────
+    //  EXCEL — Tüm Sınıflar (Classrooms)
+    // ─────────────────────────────────────────────
+
+    public async Task<byte[]> GenerateClassroomsExcelAsync()
+    {
+        var classrooms = await _db.Classrooms
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Derslikler");
+
+        var headers = new[] { "ID", "Sınıf Adı", "Kapasite", "Bina", "Laboratuvar mı?", "Projektör var mı?", "Oluşturma Tarihi" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = sheet.Cell(1, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#0284c7"); // light blue for classrooms
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
+        }
+
+        for (int i = 0; i < classrooms.Count; i++)
+        {
+            var c = classrooms[i];
+            var r = i + 2;
+            var bgColor = i % 2 == 0 ? XLColor.White : XLColor.FromHtml("#f0f9ff");
+
+            sheet.Cell(r, 1).Value = c.Id;
+            sheet.Cell(r, 2).Value = c.Name;
+            sheet.Cell(r, 3).Value = c.Capacity;
+            sheet.Cell(r, 4).Value = c.Building ?? "—";
+            sheet.Cell(r, 5).Value = c.HasLab ? "Evet" : "Hayır";
+            sheet.Cell(r, 6).Value = c.HasProjector ? "Evet" : "Hayır";
+            sheet.Cell(r, 7).Value = c.CreatedAt.ToString("dd.MM.yyyy");
+
+            sheet.Range(r, 1, r, headers.Length).Style.Fill.BackgroundColor = bgColor;
+        }
+
+        var summaryRow = classrooms.Count + 2;
+        sheet.Cell(summaryRow, 1).Value = $"Toplam: {classrooms.Count} derslik";
+        sheet.Cell(summaryRow, 1).Style.Font.Bold = true;
+        sheet.Cell(summaryRow, 1).Style.Font.FontColor = XLColor.FromHtml("#6b7280");
+
+        foreach (var col in Enumerable.Range(1, headers.Length))
+            sheet.Column(col).AdjustToContents();
+
+        sheet.SheetView.FreezeRows(1);
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
 }

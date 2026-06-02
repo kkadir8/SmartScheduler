@@ -109,4 +109,27 @@ public class ExportController : ControllerBase
             return StatusCode(500, new { message = "Excel oluşturulurken hata oluştu.", detail = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Sistemdeki tüm derslikleri (sınıfları) Excel (.xlsx) olarak indirir.
+    /// İçerik: Sınıf Adı, Kapasite, Bina, Laboratuvar, Projektör vb.
+    /// </summary>
+    [HttpGet("classrooms/excel")]
+    public async Task<IActionResult> ExportClassroomsExcel()
+    {
+        try
+        {
+            var excelBytes = await _exportService.GenerateClassroomsExcelAsync();
+            var dosyaAdi = $"derslikler-{DateTime.Now:yyyyMMdd}.xlsx";
+            return File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                dosyaAdi
+            );
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Excel oluşturulurken hata oluştu.", detail = ex.Message });
+        }
+    }
 }

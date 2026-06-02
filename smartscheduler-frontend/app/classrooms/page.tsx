@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DoorOpen, Users, Monitor, Plus, Pencil, Trash2 } from "lucide-react";
+import { DoorOpen, Users, Monitor, Plus, Pencil, Trash2, Download } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
 import ClassroomModal from "../components/modals/ClassroomModal";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../../lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface Classroom {
   id: number;
@@ -92,16 +94,23 @@ export default function ClassroomsPage() {
         <div className="flex items-center gap-2">
           {!loading && !error && (
             <>
-              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
+              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl hidden sm:flex">
                 <Monitor size={13} className="text-purple-400" />
                 <span className="text-xs text-white/50">{labCount} Lab</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl">
+              <div className="flex items-center gap-1.5 bg-cardbg border border-white/[0.06] px-3 py-1.5 rounded-xl hidden sm:flex">
                 <DoorOpen size={13} className="text-blue-400" />
                 <span className="text-xs text-white/50">{classrooms.length - labCount} Sınıf</span>
               </div>
             </>
           )}
+          <button
+            onClick={() => window.open(`${API_BASE}/api/export/classrooms/excel`, '_blank')}
+            className="flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium px-4 py-2 rounded-xl border border-emerald-500/30 transition-colors"
+          >
+            <Download size={15} />
+            Excel
+          </button>
           {user && (
             <button onClick={() => { setEditClassroom(null); setShowModal(true); }}
               className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
