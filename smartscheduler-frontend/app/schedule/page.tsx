@@ -1,36 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   CalendarCog,
   Sparkles,
   Play,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
   TrendingUp,
   Dna,
   CheckCircle2,
+  Save,
+  X
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
+import CalendarView, { ScheduleEntry } from "../components/CalendarView";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-
-const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
-const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-
-interface ScheduleEntry {
-  id: number;
-  courseId: number;
-  classroomId: number;
-  dayOfWeek: number; // 0=Pazartesi…4=Cuma
-  startHour: number;
-  durationHours: number;
-  course?: { name: string; code: string };
-  classroom?: { name: string };
-  instructor?: { name: string };
-}
 
 interface FitnessData {
   fitnessPercent: number;
@@ -39,20 +25,6 @@ interface FitnessData {
   totalGenerations: number;
   fitnessHistory: number[];
   elapsedMs: number;
-}
-
-const ENTRY_COLORS = [
-  { bg: "bg-blue-500/20", border: "border-blue-500/40", text: "text-blue-300" },
-  { bg: "bg-purple-500/20", border: "border-purple-500/40", text: "text-purple-300" },
-  { bg: "bg-emerald-500/20", border: "border-emerald-500/40", text: "text-emerald-300" },
-  { bg: "bg-orange-500/20", border: "border-orange-500/40", text: "text-orange-300" },
-  { bg: "bg-rose-500/20", border: "border-rose-500/40", text: "text-rose-300" },
-  { bg: "bg-cyan-500/20", border: "border-cyan-500/40", text: "text-cyan-300" },
-  { bg: "bg-accent/20", border: "border-accent/40", text: "text-accent" },
-];
-
-function getColor(idx: number) {
-  return ENTRY_COLORS[idx % ENTRY_COLORS.length];
 }
 
 function LoadingDots() {
@@ -103,148 +75,21 @@ function FitnessChart({ history }: { history: number[] }) {
   );
 }
 
-function CalendarView({ entries }: { entries: ScheduleEntry[] }) {
-  const [weekOffset, setWeekOffset] = useState(0);
-
-  // Get Monday of current week + offset
-  const getMonday = (offset: number) => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now.setDate(diff + offset * 7));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  };
-
-  const monday = getMonday(weekOffset);
-  const weekLabel = (() => {
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    return `${monday.getDate()} ${monday.toLocaleString("tr-TR", { month: "short" })} – ${friday.getDate()} ${friday.toLocaleString("tr-TR", { month: "short", year: "numeric" })}`;
-  })();
-
-  // Build lookup: entries[dayOfWeek][startHour] = entry[]
-  const entryMap: Record<number, Record<number, { entry: ScheduleEntry; colorIdx: number }[]>> = {};
-  const courseColorMap: Record<number, number> = {};
-  let colorCounter = 0;
-
-  entries.forEach((e) => {
-    if (!(e.courseId in courseColorMap)) {
-      courseColorMap[e.courseId] = colorCounter++;
-    }
-    if (!entryMap[e.dayOfWeek]) entryMap[e.dayOfWeek] = {};
-    if (!entryMap[e.dayOfWeek][e.startHour]) entryMap[e.dayOfWeek][e.startHour] = [];
-    entryMap[e.dayOfWeek][e.startHour].push({ entry: e, colorIdx: courseColorMap[e.courseId] });
-  });
-
-  return (
-    <div className="bg-cardbg border border-white/[0.06] rounded-2xl overflow-hidden">
-      {/* Week nav */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-        <button
-          onClick={() => setWeekOffset((w) => w - 1)}
-          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-white/40 hover:text-white/80 transition-all"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <span className="text-sm font-medium text-white/70">{weekLabel}</span>
-        <button
-          onClick={() => setWeekOffset((w) => w + 1)}
-          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-white/40 hover:text-white/80 transition-all"
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-
-      {/* Grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse min-w-[640px]">
-          <thead>
-            <tr>
-              <th className="w-14 p-2" />
-              {DAYS.map((day, i) => {
-                const date = new Date(monday);
-                date.setDate(monday.getDate() + i);
-                const isToday =
-                  weekOffset === 0 &&
-                  new Date().toDateString() === date.toDateString();
-                return (
-                  <th key={day} className="p-2 text-center">
-                    <div className={`text-xs font-semibold ${isToday ? "text-accent" : "text-white/50"}`}>
-                      {day.slice(0, 3)}
-                    </div>
-                    <div className={`text-[11px] mt-0.5 ${isToday ? "text-accent/70" : "text-white/25"}`}>
-                      {date.getDate()}
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {HOURS.map((hour) => (
-              <tr key={hour} className="border-t border-white/[0.04]">
-                <td className="text-[11px] text-white/25 text-right pr-3 py-2 font-mono align-top pt-2.5">
-                  {hour}:00
-                </td>
-                {DAYS.map((_, dayIdx) => {
-                  const cells = entryMap[dayIdx]?.[hour] ?? [];
-                  // Check if this hour is covered by an entry that started earlier
-                  const isCovered = HOURS.slice(0, HOURS.indexOf(hour)).some((h) =>
-                    (entryMap[dayIdx]?.[h] ?? []).some(
-                      ({ entry }) => h + entry.durationHours > hour
-                    )
-                  );
-                  if (isCovered) return null;
-
-                  return (
-                    <td
-                      key={dayIdx}
-                      className="p-1 align-top"
-                      style={{ minHeight: "40px" }}
-                    >
-                      {cells.map(({ entry, colorIdx }) => {
-                        const c = getColor(colorIdx);
-                        const heightClass = entry.durationHours >= 2 ? "min-h-[76px]" : "min-h-[36px]";
-                        return (
-                          <div
-                            key={entry.id}
-                            className={`${c.bg} border ${c.border} rounded-lg px-2 py-1.5 ${heightClass} flex flex-col justify-between`}
-                          >
-                            <div className={`text-[10px] font-semibold ${c.text} leading-tight truncate`}>
-                              {entry.course?.code ?? `Ders ${entry.courseId}`}
-                            </div>
-                            {entry.course?.name && (
-                              <div className="text-[9px] text-white/40 leading-tight truncate mt-0.5">
-                                {entry.course.name}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1 mt-1">
-                              <Clock size={8} className="text-white/25" />
-                              <span className="text-[9px] text-white/30">
-                                {hour}:00–{hour + entry.durationHours}:00
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export default function SchedulePage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [fitnessData, setFitnessData] = useState<FitnessData | null>(null);
+
+  // Kayıt Modalı state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveForm, setSaveForm] = useState({ name: "", term: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const generate = useCallback(async () => {
     setStatus("loading");
@@ -260,7 +105,6 @@ export default function SchedulePage() {
         throw new Error(text || `Sunucu hatası (${res.status})`);
       }
       const data = await res.json();
-      // API { entries: [...] } ya da direkt dizi dönebilir
       setEntries(Array.isArray(data) ? data : data.entries ?? []);
       if (!Array.isArray(data) && data.fitnessHistory) {
         setFitnessData({
@@ -279,23 +123,70 @@ export default function SchedulePage() {
     }
   }, []);
 
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const payload = {
+        ...saveForm,
+        entries,
+        fitnessPercent: fitnessData?.fitnessPercent,
+        conflictCount: fitnessData?.conflictCount
+      };
+
+      const res = await fetch(`${API_BASE}/api/schedule/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setShowSaveModal(false);
+        setSaveForm({ name: "", term: "" });
+        alert("Program başarıyla kaydedildi!");
+      } else {
+        alert("Kaydetme işlemi başarısız oldu.");
+      }
+    } catch (err) {
+      alert("Sunucu ile bağlantı kurulamadı.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
-          <CalendarCog size={22} className="text-accent" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-xl font-bold text-white">Program Oluşturucu</h2>
-            <StatusBadge variant="success">Sprint 3</StatusBadge>
+    <>
+      <div className="space-y-6 animate-fadeIn">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+            <CalendarCog size={22} className="text-accent" />
           </div>
-          <p className="text-sm text-white/40">
-            AI destekli genetik algoritma ile otomatik ders programı oluşturma
-          </p>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-xl font-bold text-white">Program Oluşturucu</h2>
+              <StatusBadge variant="success">Sprint 3</StatusBadge>
+            </div>
+            <p className="text-sm text-white/40">
+              AI destekli genetik algoritma ile otomatik ders programı oluşturma
+            </p>
+          </div>
         </div>
+        
+        {/* Programı Kaydet Butonu - Sadece başarı durumunda görünür */}
+        {status === "success" && entries.length > 0 && (
+           <button
+             onClick={() => setShowSaveModal(true)}
+             className="flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-4 py-2.5 rounded-xl transition-all text-sm font-semibold"
+           >
+             <Save size={16} />
+             Programı Kaydet
+           </button>
+        )}
       </div>
+
+
 
       {/* Generate card */}
       <div className="bg-cardbg border border-white/[0.06] rounded-2xl p-6">
@@ -427,15 +318,72 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {/* Empty calendar placeholder when idle */}
-      {status === "idle" && (
-        <div className="bg-cardbg border border-white/[0.06] rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-3">
-          <CalendarCog size={36} className="text-white/10" />
-          <p className="text-sm text-white/25">
-            Programı oluşturmak için yukarıdaki butona tıklayın.
-          </p>
-        </div>
+        {/* Empty calendar placeholder when idle */}
+        {status === "idle" && (
+          <div className="bg-cardbg border border-white/[0.06] rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-3">
+            <CalendarCog size={36} className="text-white/10" />
+            <p className="text-sm text-white/25">
+              Programı oluşturmak için yukarıdaki butona tıklayın.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Kayıt Modalı */}
+      {mounted && showSaveModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-cardbg border border-white/[0.08] p-6 rounded-2xl w-full max-w-md shadow-2xl max-h-[calc(100vh-40px)] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">Programı Kaydet</h3>
+              <button onClick={() => setShowSaveModal(false)} className="text-white/40 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="block text-xs text-white/50 mb-1">Program Adı</label>
+                <input 
+                  type="text" 
+                  required
+                  value={saveForm.name}
+                  onChange={(e) => setSaveForm({...saveForm, name: e.target.value})}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-accent"
+                  placeholder="Örn: 2025 Bahar Ana Program"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-white/50 mb-1">Dönem</label>
+                <input 
+                  type="text" 
+                  required
+                  value={saveForm.term}
+                  onChange={(e) => setSaveForm({...saveForm, term: e.target.value})}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-accent"
+                  placeholder="Örn: Güz 2024"
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setShowSaveModal(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white/60 hover:bg-white/[0.05]"
+                >
+                  İptal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSaving ? <LoadingDots /> : <Save size={14} />}
+                  {isSaving ? "Kaydediliyor..." : "Kaydet"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
