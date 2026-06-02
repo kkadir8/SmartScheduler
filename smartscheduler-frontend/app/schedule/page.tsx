@@ -38,6 +38,7 @@ interface FitnessData {
   bestGeneration: number;
   totalGenerations: number;
   fitnessHistory: number[];
+  elapsedMs: number;
 }
 
 const ENTRY_COLORS = [
@@ -268,6 +269,7 @@ export default function SchedulePage() {
           bestGeneration: data.bestGeneration ?? 0,
           totalGenerations: data.totalGenerations ?? 0,
           fitnessHistory: data.fitnessHistory ?? [],
+          elapsedMs: data.elapsedMs ?? 0,
         });
       }
       setStatus("success");
@@ -399,7 +401,10 @@ export default function SchedulePage() {
             <div className="bg-cardbg border border-white/[0.06] rounded-xl px-4 pt-3 pb-2">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] text-white/40">Nesil başına fitness değişimi</span>
-                <span className="text-[11px] font-mono text-accent">{fitnessData.fitnessHistory.length} nesil</span>
+                <span className="text-[11px] font-mono text-accent">
+                  {fitnessData.fitnessHistory.length} nesil
+                  {fitnessData.elapsedMs > 0 && ` · ${fitnessData.elapsedMs}ms`}
+                </span>
               </div>
               <FitnessChart history={fitnessData.fitnessHistory} />
               <div className="flex justify-between mt-1">

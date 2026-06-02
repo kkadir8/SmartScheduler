@@ -10,6 +10,7 @@ import {
   DoorOpen,
   CalendarCog,
   ShieldCheck,
+  FlaskConical,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/instructors", icon: Users, label: "Hocalar", badge: null },
   { href: "/classrooms", icon: DoorOpen, label: "Sınıflar", badge: null },
   { href: "/schedule", icon: CalendarCog, label: "Program Oluştur", badge: "S3" },
+  { href: "/whatif", icon: FlaskConical, label: "What-If Analizi", badge: "S4" },
   { href: "/constraints", icon: ShieldCheck, label: "Kısıtlar", badge: "S3" },
 ];
 
