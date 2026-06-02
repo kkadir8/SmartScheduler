@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using SmartScheduler.API.Services;
+using SmartScheduler.API.Services.Interfaces;
 
 namespace SmartScheduler.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace SmartScheduler.API.Controllers;
 [Route("api/export")]
 public class ExportController : ControllerBase
 {
-    private readonly ExportService _exportService;
+    private readonly IExportService _exportService;
 
-    public ExportController(ExportService exportService)
+    public ExportController(IExportService exportService)
     {
         _exportService = exportService;
     }

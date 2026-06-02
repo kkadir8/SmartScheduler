@@ -10,4 +10,5 @@ public class Instructor
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Course> Courses { get; set; } = [];
+    public ICollection<InstructorAvailability> Availabilities { get; set; } = [];
 }

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "./components/Sidebar";
-import Topbar from "./components/Topbar";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "SmartScheduler — DevArchitechs",
@@ -20,14 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="bg-darkbg text-white flex" style={{ minHeight: "100vh" }}>
-        <AuthProvider>
-          <Sidebar />
-          <div className="flex flex-col flex-1 min-w-0">
-            <Topbar />
-            <main className="flex-1 p-6 overflow-auto">{children}</main>
-          </div>
-        </AuthProvider>
+      <body className="bg-darkbg text-white">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

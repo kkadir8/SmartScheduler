@@ -78,19 +78,19 @@ public class ConstraintsController(AppDbContext db) : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] Constraint constraint)
     {
+        // Referans bütünlüğü kontrolü (önce girdiler geçerli mi?)
+        var courseExists    = await db.Courses.AnyAsync(c => c.Id == constraint.CourseId);
+        var classroomExists = await db.Classrooms.AnyAsync(c => c.Id == constraint.ClassroomId);
+
+        if (!courseExists)    return BadRequest(new { message = $"CourseId={constraint.CourseId} bulunamadı." });
+        if (!classroomExists) return BadRequest(new { message = $"ClassroomId={constraint.ClassroomId} bulunamadı." });
+
         // Aynı çift zaten varsa hata döndür
         var duplicate = await db.Constraints
             .AnyAsync(c => c.CourseId == constraint.CourseId
                         && c.ClassroomId == constraint.ClassroomId);
         if (duplicate)
             return Conflict(new { message = "Bu ders-derslik kısıtı zaten mevcut." });
-
-        // Referans bütünlüğü kontrolü
-        var courseExists    = await db.Courses.AnyAsync(c => c.Id == constraint.CourseId);
-        var classroomExists = await db.Classrooms.AnyAsync(c => c.Id == constraint.ClassroomId);
-
-        if (!courseExists)    return BadRequest(new { message = $"CourseId={constraint.CourseId} bulunamadı." });
-        if (!classroomExists) return BadRequest(new { message = $"ClassroomId={constraint.ClassroomId} bulunamadı." });
 
         constraint.CreatedAt = DateTime.UtcNow;
         db.Constraints.Add(constraint);

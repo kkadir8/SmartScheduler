@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SmartScheduler.API.Data;
 using SmartScheduler.API.Services;
+using SmartScheduler.API.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
@@ -18,9 +19,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 QuestPDF.Settings.License = LicenseType.Community;
 
 // Auth, Algorithm & Export Services
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<GeneticAlgorithmService>();
-builder.Services.AddScoped<ExportService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IGeneticAlgorithmService, GeneticAlgorithmService>();
+builder.Services.AddScoped<IExportService, ExportService>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]!;

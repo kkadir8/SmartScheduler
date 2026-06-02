@@ -5,9 +5,11 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SmartScheduler.API.Data;
 
+using SmartScheduler.API.Services.Interfaces;
+
 namespace SmartScheduler.API.Services;
 
-public class ExportService
+public class ExportService : IExportService
 {
     private readonly AppDbContext _db;
 

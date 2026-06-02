@@ -28,7 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<InstructorAvailability>(e =>
         {
             e.HasOne(a => a.Instructor)
-             .WithMany()
+             .WithMany(i => i.Availabilities)
              .HasForeignKey(a => a.InstructorId)
              .OnDelete(DeleteBehavior.Cascade);
 

@@ -34,6 +34,9 @@ public class InstructorsController(AppDbContext db) : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] Instructor instructor)
     {
+        if (await db.Instructors.AnyAsync(i => i.Email == instructor.Email))
+            return Conflict(new { message = $"'{instructor.Email}' e-posta adresi zaten kayıtlı." });
+
         db.Instructors.Add(instructor);
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = instructor.Id }, instructor);
@@ -45,6 +48,9 @@ public class InstructorsController(AppDbContext db) : ControllerBase
     {
         var instructor = await db.Instructors.FindAsync(id);
         if (instructor is null) return NotFound();
+
+        if (await db.Instructors.AnyAsync(i => i.Email == updated.Email && i.Id != id))
+            return Conflict(new { message = $"'{updated.Email}' e-posta adresi zaten kayıtlı." });
 
         instructor.Name = updated.Name;
         instructor.Title = updated.Title;

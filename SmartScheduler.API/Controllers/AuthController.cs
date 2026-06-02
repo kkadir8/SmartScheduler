@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using SmartScheduler.API.Models.Auth;
-using SmartScheduler.API.Services;
+using SmartScheduler.API.DTOs;
+using SmartScheduler.API.Services.Interfaces;
 
 namespace SmartScheduler.API.Controllers;
 
@@ -8,9 +8,9 @@ namespace SmartScheduler.API.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthService _authService;
+    private readonly IAuthService _authService;
 
-    public AuthController(AuthService authService)
+    public AuthController(IAuthService authService)
     {
         _authService = authService;
     }

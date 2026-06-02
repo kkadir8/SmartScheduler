@@ -1,5 +1,6 @@
 using SmartScheduler.API.Data;
 using SmartScheduler.API.Models.Algorithm;
+using SmartScheduler.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 
@@ -33,7 +34,7 @@ public class WhatIfOptions
     public List<LockedAssignment> LockedAssignments { get; set; } = [];
 }
 
-public class GeneticAlgorithmService
+public class GeneticAlgorithmService : IGeneticAlgorithmService
 {
     private readonly AppDbContext _context;
     private readonly Random _random = new();
@@ -53,6 +54,8 @@ public class GeneticAlgorithmService
     private Dictionary<int, List<int>> _constraintMap = [];
     private Dictionary<int, int> _classroomCapacities = [];
     private Dictionary<int, int> _courseSizes = [];
+    // instructorId → HashSet<(dayIdx 0..4, hour 8..17)> — boş set = tüm saatler müsait
+    private Dictionary<int, HashSet<(int dayIdx, int hour)>> _instructorAvailability = [];
 
     // What-if durumu (her run başında ayarlanır)
     private DayOfWeek[] _allowedDays = WorkDays;
@@ -78,6 +81,15 @@ public class GeneticAlgorithmService
 
         _classroomCapacities = classrooms.ToDictionary(c => c.Id, c => c.Capacity);
         _courseSizes = courses.ToDictionary(c => c.Id, c => c.StudentCount);
+
+        // Instructor availability: sadece kayıt olan hocalar için filtre uygulanır
+        // (kaydı olmayan hoca = tüm saatler müsait varsayılır)
+        _instructorAvailability = (await _context.InstructorAvailabilities.ToListAsync())
+            .GroupBy(a => a.InstructorId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(a => (a.DayOfWeek, a.Hour)).ToHashSet()
+            );
 
         // What-if seçeneklerini uygula
         ApplyWhatIfOptions(options);
@@ -225,6 +237,18 @@ public class GeneticAlgorithmService
         {
             if (_classroomCapacities.TryGetValue(gene.ClassroomId, out var cap) &&
                 _courseSizes.TryGetValue(gene.CourseId, out var size) && size > cap)
+                conflicts++;
+        }
+
+        // Instructor availability ihlalleri
+        // Hoca için kayıt varsa ama planlanan slot kayıtlı değilse → çakışma
+        foreach (var gene in genes)
+        {
+            if (gene.InstructorId == 0) continue;
+            if (!_instructorAvailability.TryGetValue(gene.InstructorId, out var availableSlots)) continue;
+            var dayIdx = (int)gene.Day - 1; // Monday=1 → 0, Friday=5 → 4
+            var hour = 8 + gene.TimeSlot;
+            if (!availableSlots.Contains((dayIdx, hour)))
                 conflicts++;
         }
 

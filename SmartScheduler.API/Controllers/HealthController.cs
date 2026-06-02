@@ -15,7 +15,6 @@ public class HealthController : ControllerBase
             project = "SmartScheduler",
             team = "DevArchitechs",
             version = "1.0.0",
-            sprint = "Sprint 1",
             timestamp = DateTime.UtcNow
         });
     }

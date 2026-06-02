@@ -5,11 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SmartScheduler.API.Data;
 using SmartScheduler.API.Models;
-using SmartScheduler.API.Models.Auth;
+using SmartScheduler.API.DTOs;
+using SmartScheduler.API.Services.Interfaces;
 
 namespace SmartScheduler.API.Services;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _config;

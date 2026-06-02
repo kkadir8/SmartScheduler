@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartScheduler.API.Data;
+using SmartScheduler.API.DTOs;
 using SmartScheduler.API.Models;
 using SmartScheduler.API.Services;
+using SmartScheduler.API.Services.Interfaces;
 
 namespace SmartScheduler.API.Controllers;
 
@@ -10,10 +12,10 @@ namespace SmartScheduler.API.Controllers;
 [Route("api/[controller]")]
 public class ScheduleController : ControllerBase
 {
-    private readonly GeneticAlgorithmService _algorithmService;
+    private readonly IGeneticAlgorithmService _algorithmService;
     private readonly AppDbContext _db;
 
-    public ScheduleController(GeneticAlgorithmService algorithmService, AppDbContext db)
+    public ScheduleController(IGeneticAlgorithmService algorithmService, AppDbContext db)
     {
         _algorithmService = algorithmService;
         _db = db;
@@ -48,6 +50,7 @@ public class ScheduleController : ControllerBase
 
     /// <summary>Üretilen programı veritabanına kaydet (Schedules + ScheduleEntries).</summary>
     [HttpPost("save")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> Save([FromBody] SaveScheduleRequest request)
     {
         if (request is null || request.Entries.Count == 0)
@@ -58,8 +61,8 @@ public class ScheduleController : ControllerBase
             Name = string.IsNullOrWhiteSpace(request.Name)
                 ? $"Program {DateTime.UtcNow:dd.MM.yyyy HH:mm}"
                 : request.Name.Trim(),
-            Semester = request.Semester?.Trim() ?? string.Empty,
-            FitnessScore = request.FitnessScore,
+            Semester = request.Term?.Trim() ?? string.Empty,
+            FitnessScore = request.FitnessPercent.HasValue ? request.FitnessPercent.Value / 100.0 : null,
             GeneratedAt = DateTime.UtcNow,
             IsActive = false,
             Entries = request.Entries.Select(e => new ScheduleEntry
@@ -79,11 +82,11 @@ public class ScheduleController : ControllerBase
         {
             schedule.Id,
             schedule.Name,
-            schedule.Semester,
-            schedule.FitnessScore,
-            schedule.GeneratedAt,
+            term = schedule.Semester,
+            fitnessPercent = schedule.FitnessScore.HasValue ? Math.Round(schedule.FitnessScore.Value * 100, 1) : (double?)null,
+            createdAt = schedule.GeneratedAt,
             schedule.IsActive,
-            entryCount = schedule.Entries.Count
+            courseCount = schedule.Entries.Count
         });
     }
 
@@ -97,11 +100,11 @@ public class ScheduleController : ControllerBase
             {
                 s.Id,
                 s.Name,
-                s.Semester,
-                s.FitnessScore,
-                s.GeneratedAt,
+                term = s.Semester,
+                fitnessPercent = s.FitnessScore.HasValue ? Math.Round(s.FitnessScore.Value * 100, 1) : 0.0,
+                createdAt = s.GeneratedAt,
                 s.IsActive,
-                entryCount = s.Entries.Count
+                courseCount = s.Entries.Count
             })
             .ToListAsync();
 
@@ -136,9 +139,9 @@ public class ScheduleController : ControllerBase
         {
             schedule.Id,
             schedule.Name,
-            schedule.Semester,
-            schedule.FitnessScore,
-            schedule.GeneratedAt,
+            term = schedule.Semester,
+            fitnessPercent = schedule.FitnessScore.HasValue ? Math.Round(schedule.FitnessScore.Value * 100, 1) : 0.0,
+            createdAt = schedule.GeneratedAt,
             schedule.IsActive,
             entries
         });
@@ -146,6 +149,7 @@ public class ScheduleController : ControllerBase
 
     /// <summary>Bir programı "aktif" işaretle; aynı anda yalnızca biri aktif olur.</summary>
     [HttpPut("{id:int}/activate")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> Activate(int id)
     {
         var target = await _db.Schedules.FirstOrDefaultAsync(s => s.Id == id);
@@ -162,6 +166,7 @@ public class ScheduleController : ControllerBase
 
     /// <summary>Kayıtlı bir programı sil (entry'ler cascade ile gider).</summary>
     [HttpDelete("{id:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> Delete(int id)
     {
         var schedule = await _db.Schedules.FirstOrDefaultAsync(s => s.Id == id);
@@ -173,16 +178,34 @@ public class ScheduleController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Kayıtlı bir programdaki tek bir dersin gün/saatini günceller.</summary>
+    [HttpPatch("{scheduleId:int}/entries/{entryId:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> UpdateEntry(int scheduleId, int entryId, [FromBody] UpdateEntryRequest request)
+    {
+        var entry = await _db.ScheduleEntries
+            .FirstOrDefaultAsync(e => e.Id == entryId && e.ScheduleId == scheduleId);
+
+        if (entry is null)
+            return NotFound($"Kayıt bulunamadı.");
+
+        entry.DayOfWeek = request.DayOfWeek;
+        entry.StartHour = request.StartHour;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { entry.Id, entry.DayOfWeek, entry.StartHour });
+    }
+
     /// <summary>generate/whatif endpoint'lerinin ortak response gövdesi.</summary>
     private static object BuildResponse(ScheduleResult result)
     {
         var best = result.Best;
 
-        // DayOfWeek: Monday=1..Friday=5 → frontend: 0=Pazartesi..4=Cuma
         var entries = best.Genes.Select((g, idx) => new
         {
             id = idx + 1,
             courseId = g.CourseId,
+            instructorId = g.InstructorId,
             classroomId = g.ClassroomId,
             dayOfWeek = (int)g.Day - 1,
             startHour = 8 + g.TimeSlot,
@@ -194,6 +217,7 @@ public class ScheduleController : ControllerBase
             fitness = Math.Round(best.Fitness, 4),
             fitnessPercent = Math.Round(best.Fitness * 100, 1),
             conflictCount = (int)Math.Round((1.0 / Math.Max(best.Fitness, 0.0001)) - 1),
+            conflicts = DetectConflicts(best.Genes),
             bestGeneration = result.BestGeneration,
             totalGenerations = result.TotalGenerations,
             elapsedMs = result.ElapsedMs,
@@ -202,23 +226,43 @@ public class ScheduleController : ControllerBase
             entries
         };
     }
+
+    private static List<object> DetectConflicts(IList<SmartScheduler.API.Models.Algorithm.Gene> genes)
+    {
+        var conflicts = new List<object>();
+        var slots = genes.GroupBy(g => (g.Day, g.TimeSlot));
+
+        foreach (var slot in slots)
+        {
+            var list = slot.ToList();
+            int day = (int)slot.Key.Day - 1;
+            int hour = 8 + slot.Key.TimeSlot;
+
+            // Aynı derslikte birden fazla ders
+            foreach (var roomGroup in list.GroupBy(g => g.ClassroomId).Where(g => g.Count() > 1))
+                conflicts.Add(new
+                {
+                    type = "room",
+                    day,
+                    hour,
+                    classroomId = roomGroup.Key,
+                    courseIds = roomGroup.Select(g => g.CourseId).ToList()
+                });
+
+            // Aynı hoca aynı slotta birden fazla ders
+            foreach (var instrGroup in list.Where(g => g.InstructorId != 0)
+                         .GroupBy(g => g.InstructorId).Where(g => g.Count() > 1))
+                conflicts.Add(new
+                {
+                    type = "instructor",
+                    day,
+                    hour,
+                    instructorId = instrGroup.Key,
+                    courseIds = instrGroup.Select(g => g.CourseId).ToList()
+                });
+        }
+
+        return conflicts;
+    }
 }
 
-// --- DTO'lar (frontend ile sözleşme) ---
-
-public class SaveScheduleRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string Semester { get; set; } = string.Empty;
-    public double? FitnessScore { get; set; }
-    public List<SaveScheduleEntry> Entries { get; set; } = [];
-}
-
-public class SaveScheduleEntry
-{
-    public int CourseId { get; set; }
-    public int ClassroomId { get; set; }
-    public int DayOfWeek { get; set; }   // 0=Pazartesi..4=Cuma
-    public int StartHour { get; set; }   // 8..18
-    public int DurationHours { get; set; } = 2;
-}

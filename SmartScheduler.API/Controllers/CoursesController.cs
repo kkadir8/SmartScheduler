@@ -34,6 +34,9 @@ public class CoursesController(AppDbContext db) : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] Course course)
     {
+        if (await db.Courses.AnyAsync(c => c.Code == course.Code))
+            return Conflict(new { message = $"'{course.Code}' kodlu ders zaten mevcut." });
+
         db.Courses.Add(course);
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = course.Id }, course);
@@ -45,6 +48,9 @@ public class CoursesController(AppDbContext db) : ControllerBase
     {
         var course = await db.Courses.FindAsync(id);
         if (course is null) return NotFound();
+
+        if (await db.Courses.AnyAsync(c => c.Code == updated.Code && c.Id != id))
+            return Conflict(new { message = $"'{updated.Code}' kodlu ders zaten mevcut." });
 
         course.Code = updated.Code;
         course.Name = updated.Name;
