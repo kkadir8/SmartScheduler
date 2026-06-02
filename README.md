@@ -6,7 +6,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000)](https://nextjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Status](https://img.shields.io/badge/status-Sprint%203%20✓-green)]()
+[![Status](https://img.shields.io/badge/status-Sprint%204%20↗-green)]()
 [![CI](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/kkadir8/SmartScheduler/actions/workflows/ci.yml)
 
 **Ekip:** DevArchitechs | **Ders:** Yazılım Projesi Geliştirme 2025-2026 Bahar | **Metodoloji:** Scrum (4 Sprint)  
@@ -16,7 +16,7 @@
 
 ## Proje Hakkında
 
-SmartScheduler, üniversitelerde ders programı oluşturma sürecini otomatikleştiren **genetik algoritma tabanlı** bir optimizasyon platformudur. Hoca müsaitlikleri, sınıf kapasiteleri ve ders çakışmaları gibi kısıtları göz önünde bulundurarak en uygun haftalık ders programını üretir.
+SmartScheduler, üniversitelerde ders programı oluşturma sürecini otomatikleştiren **genetik algoritma tabanlı** bir optimizasyon platformudur. Hoca müsaitlikleri, sınıf kapasiteleri, ders kısıtları ve program çakışmaları dikkate alınarak en uygun haftalık ders programı üretilir, kaydedilir ve dışa aktarılır.
 
 ---
 
@@ -87,6 +87,8 @@ npm run dev
 | `/instructors` | Öğretim görevlileri — CRUD (giriş gerekli) |
 | `/classrooms` | Derslikler — CRUD (giriş gerekli) |
 | `/schedule` | Program oluşturucu — genetik algoritma |
+| `/whatif` | What-if analizi — gün kapatma ve senaryo karşılaştırma |
+| `/saved` | Kayıtlı programlar — listele, aktif et, sil |
 | `/constraints` | Ders–derslik kısıt tanımları |
 
 ---
@@ -121,13 +123,29 @@ GET    /api/constraints                         → Kısıt listesi
 POST   /api/constraints                         [Authorize]
 DELETE /api/constraints/{id}                    [Authorize]
 
+# Saved Schedules
+GET    /api/schedule/list                       → Kayıtlı programlar
+GET    /api/schedule/{id}                       → Program detayı
+POST   /api/schedule/save                       [Authorize]
+PUT    /api/schedule/{id}/activate              [Authorize]
+PATCH  /api/schedule/{scheduleId}/entries/{entryId} [Authorize]
+DELETE /api/schedule/{id}                       [Authorize]
+
 # Instructor Availability
 GET    /api/instructors/{id}/availability       → Müsaitlik takvimi
 PUT    /api/instructors/{id}/availability       [Authorize]
 
 # Schedule
 POST   /api/schedule/generate                   [Authorize]
+POST   /api/schedule/whatif                     [Authorize]
 → Genetik algoritma ile program üretir
+
+# Export
+GET    /api/export/courses/excel                → Dersler Excel
+GET    /api/export/instructors/excel            → Hocalar Excel
+GET    /api/export/classrooms/excel             → Derslikler Excel
+GET    /api/export/schedules/{id}/pdf            → Program PDF
+GET    /api/export/schedules/{id}/excel          → Program Excel
 
 # System
 GET    /api/health          → Sistem durumu
@@ -162,34 +180,60 @@ SmartScheduler/
 │   │   ├── InstructorsController.cs
 │   │   ├── ClassroomsController.cs
 │   │   ├── ConstraintsController.cs
+│   │   ├── ExportController.cs
 │   │   └── ScheduleController.cs
+│   ├── DTOs/
+│   │   ├── AuthResponse.cs
+│   │   ├── LoginRequest.cs
+│   │   ├── RegisterRequest.cs
+│   │   ├── SaveScheduleRequest.cs
+│   │   └── UpdateEntryRequest.cs
 │   ├── Models/
-│   │   ├── Algorithm/        # Gene, Chromosome
-│   │   └── Auth/             # LoginRequest, RegisterRequest, AuthResponse
+│   │   ├── Algorithm/        # Gene, Chromosome, ScheduleResult
+│   │   ├── AppUser.cs
+│   │   ├── Classroom.cs
+│   │   ├── Constraint.cs
+│   │   ├── Course.cs
+│   │   ├── Instructor.cs
+│   │   ├── InstructorAvailability.cs
+│   │   ├── Schedule.cs
+│   │   └── ScheduleEntry.cs
 │   ├── Services/
 │   │   ├── AuthService.cs
+│   │   ├── ExportService.cs
 │   │   └── GeneticAlgorithmService.cs
+│   ├── Services/Interfaces/
+│   │   ├── IAuthService.cs
+│   │   ├── IExportService.cs
+│   │   └── IGeneticAlgorithmService.cs
 │   ├── Data/                 # AppDbContext
 │   ├── Migrations/
 │   └── Program.cs
 ├── smartscheduler-frontend/
-│   └── app/
-│       ├── login/
-│       ├── register/
-│       ├── context/          # AuthContext (JWT)
-│       ├── components/
-│       │   └── modals/       # CourseModal, InstructorModal, ClassroomModal, AvailabilityModal
-│       ├── dashboard/
-│       ├── courses/
-│       ├── instructors/
-│       ├── classrooms/
-│       ├── constraints/
-│       └── schedule/
-│   └── lib/
-│       └── api.ts            # Merkezi API istemcisi (apiFetch)
+│   ├── app/
+│   │   ├── (auth)/           # login, register
+│   │   ├── (main)/           # dashboard, courses, instructors, classrooms, schedule, whatif, saved, constraints
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
+│   │   ├── modals/           # CourseModal, InstructorModal, ClassroomModal, AvailabilityModal
+│   │   ├── CalendarView.tsx
+│   │   ├── ApiError.tsx
+│   │   ├── MetricCard.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── StatusBadge.tsx
+│   │   └── Topbar.tsx
+│   ├── context/              # AuthContext (JWT)
+│   ├── hooks/                # useCourses, useInstructors, useClassrooms
+│   ├── lib/
+│   │   ├── api.ts            # Merkezi API istemcisi (apiFetch)
+│   │   └── constants.ts
+│   ├── types/                # Ortak TypeScript tipleri
+│   └── middleware.ts
 ├── docs/
 │   ├── ARCHITECTURE.md
-│   └── DATABASE_SCHEMA.md
+│   ├── DATABASE_SCHEMA.md
+│   └── TEST_SCENARIOS.md
 └── docker-compose.yml
 ```
 
@@ -203,13 +247,16 @@ SmartScheduler/
 | Sprint 1 | Kurulum · PostgreSQL · API · Frontend | ✅ Tamamlandı |
 | Sprint 2 | JWT Auth · CRUD · Repository · Genetik Algoritma | ✅ Tamamlandı |
 | Sprint 3 | Kısıtlar · Müsaitlik · Takvim · API Hata Yönetimi · Test | ✅ Tamamlandı |
-| Sprint 4 | Deploy · Final Demo | 🔄 Devam Ediyor |
+| Sprint 4 | What-if · Kayıtlı Programlar · Export · Final Demo | 🔄 Devam Ediyor |
 
 ### Sprint 3 Tamamlanan Özellikler
 - ✅ Kısıt sayfası — ders–derslik eşleştirme UI
 - ✅ Kısıt API endpoint'leri (GET / POST / DELETE)
 - ✅ Hoca müsaitlik takvimi (AvailabilityModal — haftalık grid)
 - ✅ Haftalık program takvim görünümü
+- ✅ What-if analizi — gün bazlı senaryo üretimi
+- ✅ Kayıtlı programlar — listeleme, aktif etme, silme
+- ✅ Program export — PDF ve Excel indirme
 - ✅ Merkezi API istemcisi (`lib/api.ts` — apiFetch + 401 yönetimi)
 - ✅ Modal satır içi hata bildirimleri
 - ✅ Genetik algoritma fitness score & nesil sayısı görselleştirme
@@ -221,11 +268,11 @@ SmartScheduler/
 
 | İsim | Rol | Sorumluluk |
 |------|-----|------------|
-| Abdulkadir Gedik | Product Owner | Genetik algoritma & koordinasyon |
-| Yunus Emre Edizer | Scrum Master | Backend Lead — JWT, CRUD API |
-| Emin Akif Erzurumlu | Developer | Frontend Lead — UI, Auth, Modals |
-| Hamza Hakverir | Developer | Veritabanı & Repository Pattern |
-| Burak Kürkçü | Developer | DevOps & Test — CI/CD |
+| Abdulkadir Gedik | Product Owner | Genetik algoritma, what-if ve koordinasyon |
+| Yunus Emre Edizer | Scrum Master | Backend Lead — Auth, CRUD, Export API |
+| Emin Akif Erzurumlu | Developer | Frontend Lead — UI, Auth, Modals, Saved/What-if |
+| Hamza Hakverir | Developer | Veritabanı, repository ve şema |
+| Burak Kürkçü | Developer | DevOps, test ve entegrasyon |
 
 ---
 

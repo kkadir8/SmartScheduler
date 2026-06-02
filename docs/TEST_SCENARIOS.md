@@ -1,10 +1,10 @@
 # SmartScheduler API — Test Senaryoları
 
-**Sprint:** 3  
+**Sprint:** 4  
 **Sorumlu:** Burak Kürkçü  
 **Tarih:** 19.05.2026  
-**Durum:** Sprint 3 Sonu  
-**Kapsam:** Auth, CRUD ve Algoritma endpoint'leri için başarılı ve hatalı durum test senaryoları
+**Durum:** Sprint 4 hazırlık  
+**Kapsam:** Auth, CRUD, Algoritma, What-if, Kayıtlı Programlar ve Export endpoint'leri için başarılı ve hatalı durum test senaryoları
 
 ---
 
@@ -186,6 +186,61 @@
 
 ---
 
+## 7. SCHEDULE — What-if Analizi (POST /api/schedule/whatif)
+
+### TS-16 — Gün Kısıtlı Senaryo Üretme
+- **Açıklama:** Belirli günler kapatılarak alternatif program üretilir.
+- **Endpoint:** `POST /api/schedule/whatif`
+- **Auth:** Geçerli JWT Token
+- **Girdi:**
+  ```json
+  { "excludedDays": [0, 4], "lockedAssignments": [] }
+  ```
+- **Beklenen Sonuç:** `200 OK` — `fitnessHistory` dahil aynı response formatı döner.
+- **Başarı Kriteri:** En az bir açık gün varsa sonuç üretmeli.
+
+---
+
+## 8. SCHEDULE — Kayıtlı Programlar (GET/POST/PATCH/DELETE /api/schedule)
+
+### TS-17 — Program Kaydetme
+- **Açıklama:** Üretilen bir program veritabanına kaydedilir.
+- **Endpoint:** `POST /api/schedule/save`
+- **Auth:** Geçerli JWT Token
+- **Girdi:**
+  ```json
+  { "name": "2025-2026 Bahar A", "term": "2025-2026 Bahar", "fitnessPercent": 92.5, "entries": [] }
+  ```
+- **Beklenen Sonuç:** `201 Created` — kayıtlı program özet bilgileri döner.
+- **Başarı Kriteri:** Schedule tablosuna kayıt eklenmeli.
+
+### TS-18 — Kayıtlı Programları Listeleme
+- **Açıklama:** Sistemdeki kayıtlı programlar özet olarak listelenir.
+- **Endpoint:** `GET /api/schedule/list`
+- **Auth:** Gerekmiyor
+- **Beklenen Sonuç:** `200 OK` — program adı, dönem, fitness ve ders sayısı döner.
+- **Başarı Kriteri:** Liste boş veya dolu olabilir, HTTP kodu 200 olmalı.
+
+### TS-19 — Program Aktivasyonunu Değiştirme
+- **Açıklama:** Kaydedilmiş bir program aktif işaretlenir.
+- **Endpoint:** `PUT /api/schedule/{id}/activate`
+- **Auth:** Geçerli JWT Token
+- **Beklenen Sonuç:** `204 No Content`
+- **Başarı Kriteri:** Aynı anda yalnızca bir program aktif kalmalı.
+
+---
+
+## 9. EXPORT — Dışa Aktarma (GET /api/export)
+
+### TS-20 — Programı Excel Olarak İndirme
+- **Açıklama:** Kayıtlı bir program `.xlsx` olarak indirilir.
+- **Endpoint:** `GET /api/export/schedules/1/excel`
+- **Auth:** Gerekmiyor
+- **Beklenen Sonuç:** `200 OK` — Excel dosyası dönmeli.
+- **Başarı Kriteri:** İndirilen dosya geçerli bir `.xlsx` olmalı.
+
+---
+
 ## Test Özeti
 
 | ID | Endpoint | Durum Türü | Beklenen HTTP |
@@ -205,5 +260,10 @@
 | TS-13 | POST /api/constraints | ❌ Geçersiz CourseId | 400 |
 | TS-14 | GET /api/constraints/course/{id} | ✅ Listeleme | 200 |
 | TS-15 | POST /api/schedule/generate | ✅ Algoritma çalışıyor | 200 |
+| TS-16 | POST /api/schedule/whatif | ✅ What-if analizi | 200 |
+| TS-17 | POST /api/schedule/save | ✅ Program kaydı | 201 |
+| TS-18 | GET /api/schedule/list | ✅ Program listesi | 200 |
+| TS-19 | PUT /api/schedule/{id}/activate | ✅ Program aktivasyonu | 204 |
+| TS-20 | GET /api/export/schedules/{id}/excel | ✅ Excel export | 200 |
 
-**Toplam: 15 test senaryosu** (Auth: 5 · CRUD: 5 · Kısıt: 4 · Algoritma: 1)
+**Toplam: 20 test senaryosu** (Auth: 5 · CRUD: 5 · Kısıt: 4 · Algoritma: 1 · What-if/Kayıt/Export: 5)

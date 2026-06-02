@@ -4,13 +4,13 @@
 **Ekip:** DevArchitechs  
 **Ders:** Yazılım Projesi Geliştirme — 3. Sınıf Yazılım Mühendisliği  
 **Dönem:** 2025-2026 Bahar  
-**Tarih:** Mayıs 2026
+**Tarih:** Haziran 2026
 
 ---
 
 ## 1. Proje Özeti
 
-SmartScheduler, üniversite bölümlerinin ders programı oluşturma sürecini otomatikleştiren bir web uygulamasıdır. Sistem; hoca müsaitlikleri, sınıf kapasiteleri ve ders çakışmaları gibi kısıtları göz önünde bulundurarak **genetik algoritma** tabanlı optimizasyon ile en uygun haftalık ders programını üretir.
+SmartScheduler, üniversite bölümlerinin ders programı oluşturma sürecini otomatikleştiren bir web uygulamasıdır. Sistem; hoca müsaitlikleri, sınıf kapasiteleri, ders kısıtları, kayıtlı programlar ve what-if senaryolarını dikkate alarak **genetik algoritma** tabanlı optimizasyon ile en uygun haftalık ders programını üretir, kaydeder ve dışa aktarır.
 
 ### Hedef Kullanıcı
 - Üniversite bölüm sekreterleri
@@ -28,25 +28,25 @@ SmartScheduler, üniversite bölümlerinin ders programı oluşturma sürecini o
                        │ HTTP/HTTPS
 ┌──────────────────────▼──────────────────────────────────────┐
 │                   FRONTEND KATMANI                          │
-│              Next.js 14 (App Router)                        │
-│         TypeScript + Tailwind CSS                           │
-│    localhost:3000  │  Vercel (prod deploy - Sprint 4)        │
+│   Next.js 14 App Router                                     │
+│   Route groups: (auth) / (main)                             │
+│   Components: Sidebar, Topbar, Modals, CalendarView         │
 └──────────────────────┬──────────────────────────────────────┘
                        │ REST API (JSON)
                        │ http://localhost:5000/api/*
 ┌──────────────────────▼──────────────────────────────────────┐
 │                   BACKEND KATMANI                           │
-│              ASP.NET Core 9 Web API                         │
-│          Controllers + Service Layer                        │
-│    localhost:5000  │  Railway (prod deploy - Sprint 4)       │
+│   ASP.NET Core 9 Web API                                    │
+│   Controllers + DTOs + Service Interfaces                   │
+│   Auth, CRUD, Schedule, What-if, Export                    │
 └──────────┬──────────────────────┬───────────────────────────┘
            │                      │
 ┌──────────▼──────────┐  ┌────────▼────────────────────────────┐
 │  VERİTABANI KATMANI │  │      ALGORİTMA MOTORU               │
 │  PostgreSQL 16      │  │  Genetik Algoritma (C#)             │
-│  Entity Framework   │  │  - Kromozom temsili                 │
-│  Core (Code-First)  │  │  - Fitness fonksiyonu               │
-│  Railway (prod)     │  │  - Crossover + Mutasyon             │
+│  EF Core Code-First  │  │  - Kromozom temsili                │
+│  Users, Schedules   │  │  - Fitness & conflict scoring       │
+│  Availability vb.   │  │  - Crossover + Mutasyon + Select   │
 └─────────────────────┘  └─────────────────────────────────────┘
 ```
 
@@ -56,24 +56,27 @@ SmartScheduler, üniversite bölümlerinin ders programı oluşturma sürecini o
 
 ```
 SmartScheduler.API/
-├── Controllers/          → HTTP endpoint'leri, request/response
-├── Services/             → İş mantığı, algoritma servisleri  
-├── Models/               → Domain entity'leri (Constraint, Course, vb.)
-├── DTOs/                 → Data Transfer Objects
+├── Controllers/          → Auth, CRUD, Schedule, Export, Health
+├── DTOs/                 → Login/Register, save payload'ları
+├── Models/               → Entity ve algoritma modelleri
+├── Services/             → Auth, Export, Genetic Algorithm
+├── Services/Interfaces/  → Servis sözleşmeleri
 ├── Data/                 → AppDbContext
 └── Migrations/           → EF Core migration'ları
 
 smartscheduler-frontend/
 ├── app/
-│   ├── layout.tsx        → Root layout (Sidebar + Topbar)
-│   ├── dashboard/        → Genel bakış + metrikler
-│   ├── courses/          → Ders yönetimi
-│   ├── instructors/      → Hoca yönetimi
-│   ├── classrooms/       → Sınıf yönetimi
-│   ├── constraints/      → Kısıt tanımları (Sprint 3)
-│   └── schedule/         → Program oluşturucu
-└── lib/
-    └── api.ts            → Merkezi API istemcisi (apiFetch)
+│   ├── (auth)/           → login, register
+│   ├── (main)/           → dashboard, courses, instructors, classrooms
+│   │                       schedule, saved, whatif, constraints
+│   ├── layout.tsx        → Root layout (AuthProvider)
+│   └── page.tsx          → Redirect / landing
+├── components/           → Sidebar, Topbar, CalendarView, modals
+├── context/              → AuthContext (JWT)
+├── hooks/                → useCourses, useInstructors, useClassrooms
+├── lib/                  → api.ts, constants.ts
+├── types/                → Ortak TypeScript tipleri
+└── middleware.ts         → route guard
 ```
 
 ---
@@ -83,10 +86,11 @@ smartscheduler-frontend/
 ### Frontend
 | Teknoloji | Versiyon | Kullanım Amacı |
 |-----------|----------|----------------|
-| Next.js | 14.2.3 | React framework, App Router, SSR/SSG |
+| Next.js | 14.x | React framework, App Router, route groups |
 | TypeScript | 5.x | Tip güvenliği |
 | Tailwind CSS | 3.4 | Utility-first CSS |
 | Lucide React | latest | İkon kütüphanesi |
+| Inter | Google Fonts | Arayüz yazı tipi |
 
 ### Backend
 | Teknoloji | Versiyon | Kullanım Amacı |
@@ -258,17 +262,17 @@ Fitness = 1 / (1 + ihlal_sayısı × ağırlık)
 | Sprint 1 | Kurulum & API temelleri & PostgreSQL | ✅ Tamamlandı |
 | Sprint 2 | JWT Auth · CRUD · Genetik Algoritma | ✅ Tamamlandı |
 | Sprint 3 | Kısıtlar · Müsaitlik · API Hata Yönetimi · Test | ✅ Tamamlandı |
-| Sprint 4 | Deploy · Final Demo | 🔄 Devam Ediyor |
+| Sprint 4 | What-if · Kayıtlı Programlar · Export · Final Demo | 🔄 Devam Ediyor |
 
 ---
 
 ## 10. Geliştirme Ortamı Kurulumu
 
 ### Gereksinimler
-- Node.js 24+
+- Node.js 18+
 - .NET 9 SDK
 - PostgreSQL 16
-- Docker (opsiyonel)
+- Docker / Docker Compose (opsiyonel)
 
 ### Frontend
 ```bash
@@ -285,9 +289,6 @@ dotnet run         # localhost:5000 (Swagger UI)
 
 ### Veritabanı (Sprint 2'den itibaren)
 ```bash
-# PostgreSQL başlat
-brew services start postgresql@16
-
 # Migration uygula
 cd SmartScheduler.API
 dotnet ef database update
@@ -299,11 +300,11 @@ dotnet ef database update
 
 | Kişi | Scrum Rolü | Teknik Sorumluluk |
 |------|-----------|-------------------|
-| Abdulkadir Gedik | Product Owner | Genetik algoritma tasarımı & koordinasyon |
-| Yunus Emre Edizer | Scrum Master | Backend Lead (.NET API, Auth) |
-| Emin Akif Erzurumlu | Developer | Frontend Lead (Next.js, UI/UX) |
-| Hamza Hakverir | Developer | Veritabanı & DAL (EF Core, PostgreSQL) |
-| Burak Kürkçü | Developer | DevOps & Test (Docker, CI/CD, testing) |
+| Abdulkadir Gedik | Product Owner | Genetik algoritma, what-if ve koordinasyon |
+| Yunus Emre Edizer | Scrum Master | Backend Lead (.NET API, Auth, Export) |
+| Emin Akif Erzurumlu | Developer | Frontend Lead (Next.js, UI/UX, Modals) |
+| Hamza Hakverir | Developer | Veritabanı, DAL ve EF Core |
+| Burak Kürkçü | Developer | DevOps, CI/CD ve test |
 
 ---
 

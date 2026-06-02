@@ -2,8 +2,8 @@
 
 **Veritabanı:** PostgreSQL 16  
 **ORM:** Entity Framework Core 9 (Code-First)  
-**Güncel Sprint:** 3 (Constraints tablosu eklendi)  
-**Migration Sayısı:** 3 (InitialCreate · Sprint2_Auth_CRUD · Sprint3_Constraints_SeedData)
+**Güncel Sprint:** 4 (What-if, kayıtlı programlar ve export akışları eklendi)  
+**Migration Sayısı:** 4 (InitialCreate · Sprint2_Auth_CRUD · Sprint3_Constraints_SeedData · Sprint3_InstructorAvailability)
 
 ---
 
@@ -48,6 +48,13 @@ erDiagram
         datetime CreatedAt
     }
 
+    INSTRUCTOR_AVAILABILITY {
+        int     Id              PK
+        int     InstructorId    FK
+        int     DayOfWeek
+        int     Hour
+    }
+
     SCHEDULE {
         int     Id          PK
         string  Name
@@ -82,6 +89,7 @@ erDiagram
     SCHEDULE   ||--o{ SCHEDULE_ENTRY : "içerir"
     COURSE     ||--o{ CONSTRAINT     : "kısıtlanır"
     CLASSROOM  ||--o{ CONSTRAINT     : "kısıtlar"
+    INSTRUCTOR ||--o{ INSTRUCTOR_AVAILABILITY : "müsaitlik tanımlar"
 ```
 
 ---
@@ -160,6 +168,17 @@ CREATE TABLE "Constraints" (
     "Notes"       TEXT,
     "CreatedAt"   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE ("CourseId", "ClassroomId")   -- mükerrer kısıt engeli
+);
+```
+
+### InstructorAvailability (Hoca Müsaitliği)
+```sql
+CREATE TABLE "InstructorAvailabilities" (
+    "Id"          SERIAL PRIMARY KEY,
+    "InstructorId" INT NOT NULL REFERENCES "Instructors"("Id") ON DELETE CASCADE,
+    "DayOfWeek"   INT NOT NULL CHECK ("DayOfWeek" BETWEEN 0 AND 4),
+    "Hour"        INT NOT NULL CHECK ("Hour" BETWEEN 8 AND 18),
+    UNIQUE ("InstructorId", "DayOfWeek", "Hour")
 );
 ```
 
@@ -281,8 +300,8 @@ public class Constraint
 | Sprint2_Auth_CRUD | 4 Hoca, 5 Ders, 5 Sınıf (temel CRUD test verisi) |
 | Sprint3_Constraints_SeedData | +11 Hoca, +15 Ders, +10 Sınıf, 21 Kısıt |
 
-**Toplam (Sprint 3 sonrası):** 15 hoca · 20 ders · 15 sınıf · 21 kısıt
+**Toplam (Sprint 4 itibarıyla):** 15 hoca · 20 ders · 15 sınıf · 21 kısıt · 4 migration
 
 ---
 
-*DevArchitechs · SmartScheduler · Veritabanı Şema v2.0 (Sprint 3)*
+*DevArchitechs · SmartScheduler · Veritabanı Şema v2.1 (Sprint 4)*
