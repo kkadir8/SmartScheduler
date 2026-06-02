@@ -45,6 +45,12 @@ export default function CoursesPage() {
   const api = <T,>(endpoint: string, options?: RequestInit) =>
     apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
 
+  const sortValue = (course: Course, key: keyof Course) => {
+    const value = course[key];
+    if (typeof value === "string") return value.toLowerCase();
+    return value ?? 0;
+  };
+
   const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
     const method = course.id ? "PUT" : "POST";
     const endpoint = course.id ? `/api/courses/${course.id}` : "/api/courses";
@@ -77,11 +83,11 @@ export default function CoursesPage() {
       (c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.code.toLowerCase().includes(search.toLowerCase()) ||
-        c.instructorName.toLowerCase().includes(search.toLowerCase())
+        (c.instructorName ?? "").toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
@@ -212,7 +218,7 @@ export default function CoursesPage() {
                         </StatusBadge>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="text-sm text-white/60">{course.instructorName}</span>
+                        <span className="text-sm text-white/60">{course.instructorName ?? "-"}</span>
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
