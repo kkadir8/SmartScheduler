@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Sparkles,
   GraduationCap,
+  Save,
 } from "lucide-react";
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/schedule", icon: CalendarCog, label: "Program Oluştur", badge: "S3" },
   { href: "/whatif", icon: FlaskConical, label: "What-If Analizi", badge: "S4" },
   { href: "/constraints", icon: ShieldCheck, label: "Kısıtlar", badge: "S3" },
+  { href: "/saved", icon: Save, label: "Kayıtlı Programlar", badge: "S4" },
 ];
 
 export default function Sidebar() {
