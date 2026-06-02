@@ -164,7 +164,7 @@ export default function CoursesPage() {
       </div>
 
       {error ? (
-        <ApiError onRetry={fetchCourses} />
+        <ApiError onRetry={refetchCourses} />
       ) : (
         <div className="bg-cardbg border border-white/[0.06] rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">

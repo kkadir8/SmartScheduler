@@ -5,9 +5,12 @@ import { createPortal } from "react-dom";
 import { X, Save, ChevronDown, Check } from "lucide-react";
 import type { Instructor } from "@/types";
 
+type InstructorForm = Omit<Instructor, "id" | "courseCount">;
+type InstructorPayload = InstructorForm & { id?: number };
+
 interface Props {
-  instructor?: Instructor | null;
-  onSave: (instructor: Instructor) => Promise<void>;
+  instructor?: InstructorPayload | null;
+  onSave: (instructor: InstructorPayload) => Promise<void>;
   onClose: () => void;
 }
 
@@ -55,7 +58,7 @@ function CustomSelect({ value, onChange }: { value: string; onChange: (v: string
 }
 
 export default function InstructorModal({ instructor, onSave, onClose }: Props) {
-  const [form, setForm] = useState<Instructor>({ name: "", title: "Dr.", department: "", email: "" });
+  const [form, setForm] = useState<InstructorForm>({ name: "", title: "Dr.", department: "", email: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -108,7 +111,7 @@ export default function InstructorModal({ instructor, onSave, onClose }: Props) 
           {fields.map(({ key, label, type, placeholder }) => (
             <div key={key}>
               <label className="block text-xs text-white/50 mb-1.5">{label}</label>
-              <input type={type} value={form[key as keyof Instructor] as string}
+              <input type={type} value={form[key as keyof InstructorForm] as string}
                 onChange={e => setForm({ ...form, [key]: e.target.value })}
                 required placeholder={placeholder}
                 className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all" />

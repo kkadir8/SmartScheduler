@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { X, Save } from "lucide-react";
 import type { Course, Instructor } from "@/types";
 
-type CourseForm = Omit<Course, "instructorName">;
+type CourseForm = Omit<Course, "id" | "instructorName">;
+type CoursePayload = CourseForm & { id?: number };
 
 interface Props {
-  course?: CourseForm | null;
+  course?: CoursePayload | null;
   instructors: Pick<Instructor, "id" | "name">[];
-  onSave: (course: CourseForm) => Promise<void>;
+  onSave: (course: CoursePayload) => Promise<void>;
   onClose: () => void;
 }
 

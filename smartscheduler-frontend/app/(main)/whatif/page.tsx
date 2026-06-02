@@ -223,6 +223,7 @@ export default function WhatIfPage() {
       conflictCount: d.conflictCount ?? 0,
       bestGeneration: d.bestGeneration ?? 0,
       totalGenerations: d.totalGenerations ?? 0,
+      fitnessHistory: d.fitnessHistory ?? [],
       elapsedMs: d.elapsedMs ?? 0,
       stoppedEarly: d.stoppedEarly ?? false,
       entries: Array.isArray(d) ? d : d.entries ?? [],

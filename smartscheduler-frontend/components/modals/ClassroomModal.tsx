@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 import { X, Save } from "lucide-react";
 import type { Classroom } from "@/types";
 
+type ClassroomForm = Omit<Classroom, "id">;
+type ClassroomPayload = ClassroomForm & { id?: number };
+
 interface Props {
-  classroom?: Classroom | null;
-  onSave: (classroom: Classroom) => Promise<void>;
+  classroom?: ClassroomPayload | null;
+  onSave: (classroom: ClassroomPayload) => Promise<void>;
   onClose: () => void;
 }
 
 export default function ClassroomModal({ classroom, onSave, onClose }: Props) {
-  const [form, setForm] = useState<Classroom>({
+  const [form, setForm] = useState<ClassroomForm>({
     name: "", building: "", capacity: 30, hasLab: false, hasProjector: true
   });
   const [loading, setLoading] = useState(false);
@@ -73,7 +76,7 @@ export default function ClassroomModal({ classroom, onSave, onClose }: Props) {
               { key: "hasProjector", label: "Projektör" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form[key as keyof Classroom] as boolean}
+                <input type="checkbox" checked={form[key as keyof ClassroomForm] as boolean}
                   onChange={e => setForm({ ...form, [key]: e.target.checked })}
                   className="w-4 h-4 accent-accent rounded" />
                 <span className="text-sm text-white/60">{label}</span>

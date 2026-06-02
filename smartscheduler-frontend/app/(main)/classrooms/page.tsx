@@ -109,7 +109,7 @@ export default function ClassroomsPage() {
       )}
 
       {error ? (
-        <ApiError onRetry={fetchClassrooms} />
+        <ApiError onRetry={refetchClassrooms} />
       ) : (
         <div className="bg-cardbg border border-white/[0.06] rounded-2xl overflow-hidden">
           <div className="grid grid-cols-[auto_1fr_1fr_auto_auto] gap-4 px-5 py-3 border-b border-white/[0.06]">

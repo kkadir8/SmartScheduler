@@ -184,9 +184,9 @@ export default function ConstraintsPage() {
 
   const filtered = constraints.filter(
     (c) =>
-      c.courseCode.toLowerCase().includes(search.toLowerCase()) ||
-      c.courseName.toLowerCase().includes(search.toLowerCase()) ||
-      c.classroomName.toLowerCase().includes(search.toLowerCase()) ||
+      (c.courseCode ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.courseName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.classroomName ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (c.classroomBuilding ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -248,7 +248,7 @@ export default function ConstraintsPage() {
       </div>
 
       {error ? (
-        <ApiError onRetry={fetchAll} />
+        <ApiError onRetry={fetchConstraints} />
       ) : (
         <div className="bg-cardbg border border-white/[0.06] rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -341,7 +341,7 @@ export default function ConstraintsPage() {
           courses={courses}
           classrooms={classrooms}
           token={user?.token ?? ""}
-          onSaved={fetchAll}
+          onSaved={fetchConstraints}
           onClose={() => setShowModal(false)}
         />
       )}
