@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, BookOpen, Users, Plus, Pencil, Trash2, Calendar } from "lucide-react";
+import { Mail, BookOpen, Users, Plus, Pencil, Trash2, Calendar, Download } from "lucide-react";
 import ApiError from "../components/ApiError";
 import InstructorModal from "../components/modals/InstructorModal";
 import AvailabilityModal from "../components/modals/AvailabilityModal";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../../lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface Instructor {
   id: number;
@@ -105,6 +107,13 @@ export default function InstructorsPage() {
             <Users size={14} className="text-white/30" />
             <span className="text-xs text-white/40">{loading ? "—" : instructors.length} üye</span>
           </div>
+          <button
+            onClick={() => window.open(`${API_BASE}/api/export/instructors/excel`, '_blank')}
+            className="flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium px-4 py-2 rounded-xl border border-emerald-500/30 transition-colors"
+          >
+            <Download size={15} />
+            Excel
+          </button>
           {user && (
             <button onClick={() => { setEditInstructor(null); setShowModal(true); }}
               className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">

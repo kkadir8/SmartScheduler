@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Plus, BookOpen, ChevronUp, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, BookOpen, ChevronUp, ChevronDown, Pencil, Trash2, Download } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import ApiError from "../components/ApiError";
 import CourseModal from "../components/modals/CourseModal";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../../lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface Course {
   id: number;
@@ -152,15 +154,24 @@ export default function CoursesPage() {
             {loading ? "Yükleniyor..." : `${filtered.length} ders listeleniyor`}
           </p>
         </div>
-        {user && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => { setEditCourse(null); setShowModal(true); }}
-            className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+            onClick={() => window.open(`${API_BASE}/api/export/courses/excel`, '_blank')}
+            className="flex items-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-sm font-medium px-4 py-2 rounded-xl border border-emerald-500/30 transition-colors"
           >
-            <Plus size={15} />
-            Yeni Ders
+            <Download size={15} />
+            Excel
           </button>
-        )}
+          {user && (
+            <button
+              onClick={() => { setEditCourse(null); setShowModal(true); }}
+              className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+            >
+              <Plus size={15} />
+              Yeni Ders
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Delete error banner */}

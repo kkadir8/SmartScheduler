@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Save, CalendarDays, Trash2, CheckCircle2, ChevronRight, X } from "lucide-react";
+import { Save, CalendarDays, Trash2, CheckCircle2, ChevronRight, X, FileText, FileSpreadsheet } from "lucide-react";
 import CalendarView, { ScheduleEntry } from "../components/CalendarView";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
@@ -139,14 +139,29 @@ export default function SavedSchedulesPage() {
                         </button>
                       )}
                       <button 
+                        onClick={() => window.open(`${API_BASE}/api/export/schedules/${s.id}/pdf`, '_blank')}
+                        className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors ml-1"
+                        title="PDF İndir"
+                      >
+                        <FileText size={16} />
+                      </button>
+                      <button 
+                        onClick={() => window.open(`${API_BASE}/api/export/schedules/${s.id}/excel`, '_blank')}
+                        className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors ml-1"
+                        title="Excel İndir"
+                      >
+                        <FileSpreadsheet size={16} />
+                      </button>
+                      <button 
                         onClick={() => loadScheduleDetails(s.id)}
-                        className="px-3 py-1.5 text-xs font-semibold bg-accent/20 hover:bg-accent/30 text-accent rounded-lg transition-colors inline-flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs font-semibold bg-accent/20 hover:bg-accent/30 text-accent rounded-lg transition-colors inline-flex items-center gap-1 ml-1"
                       >
                         Görüntüle <ChevronRight size={12} />
                       </button>
                       <button 
                         onClick={() => handleDelete(s.id)}
                         className="p-1.5 text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors ml-1"
+                        title="Sil"
                       >
                         <Trash2 size={16} />
                       </button>
