@@ -1,4 +1,5 @@
 using System.Text;
+using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,9 +14,13 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Auth & Algorithm Services
+// QuestPDF Community Lisansı (ücretsiz, açık kaynak projeler için)
+QuestPDF.Settings.License = LicenseType.Community;
+
+// Auth, Algorithm & Export Services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<GeneticAlgorithmService>();
+builder.Services.AddScoped<ExportService>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]!;
