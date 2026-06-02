@@ -1,6 +1,7 @@
 using SmartScheduler.API.Data;
 using SmartScheduler.API.Models.Algorithm;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace SmartScheduler.API.Services;
 
@@ -10,6 +11,26 @@ public class ScheduleResult
     public List<double> FitnessHistory { get; set; } = [];
     public int BestGeneration { get; set; }
     public int TotalGenerations { get; set; }
+    public long ElapsedMs { get; set; }
+    public bool StoppedEarly { get; set; }
+}
+
+/// <summary>Tek bir dersi belirli bir güne ve saate sabitlemek için kullanılır (What-if).</summary>
+public class LockedAssignment
+{
+    public int CourseId { get; set; }
+    public int DayOfWeek { get; set; }  // 0=Pazartesi..4=Cuma
+    public int StartHour { get; set; }  // 8..17
+}
+
+/// <summary>What-if analizi senaryo girdileri. Boş ise normal çalışır.</summary>
+public class WhatIfOptions
+{
+    /// <summary>Kapalı günler (0=Pazartesi..4=Cuma). Bu günlere ders atanmaz.</summary>
+    public List<int> ExcludedDays { get; set; } = [];
+
+    /// <summary>Belirli derslerin sabitlendiği gün/saat atamaları.</summary>
+    public List<LockedAssignment> LockedAssignments { get; set; } = [];
 }
 
 public class GeneticAlgorithmService
@@ -20,7 +41,10 @@ public class GeneticAlgorithmService
     private const int PopulationSize = 50;
     private const int MaxGenerations = 200;
     private const double MutationRate = 0.02;
+    private const double MaxMutationRate = 0.20;
     private const double CrossoverRate = 0.8;
+    private const int StagnationLimit = 40;   // bu kadar nesil iyileşme olmazsa erken dur
+
     private static readonly DayOfWeek[] WorkDays =
         [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
          DayOfWeek.Thursday, DayOfWeek.Friday];
@@ -30,13 +54,20 @@ public class GeneticAlgorithmService
     private Dictionary<int, int> _classroomCapacities = [];
     private Dictionary<int, int> _courseSizes = [];
 
+    // What-if durumu (her run başında ayarlanır)
+    private DayOfWeek[] _allowedDays = WorkDays;
+    private Dictionary<int, (DayOfWeek Day, int TimeSlot)> _lockedGenes = [];
+
     public GeneticAlgorithmService(AppDbContext context)
     {
         _context = context;
     }
 
-    public async Task<ScheduleResult> GenerateScheduleAsync()
+    /// <summary>Genetik algoritma ile optimum ders programı üret. options=null ise normal çalışır.</summary>
+    public async Task<ScheduleResult> GenerateScheduleAsync(WhatIfOptions? options = null)
     {
+        var sw = Stopwatch.StartNew();
+
         var courses = await _context.Courses.Include(c => c.Instructor).ToListAsync();
         var classrooms = await _context.Classrooms.ToListAsync();
 
@@ -48,8 +79,14 @@ public class GeneticAlgorithmService
         _classroomCapacities = classrooms.ToDictionary(c => c.Id, c => c.Capacity);
         _courseSizes = courses.ToDictionary(c => c.Id, c => c.StudentCount);
 
-        if (!courses.Any() || !classrooms.Any())
-            return new ScheduleResult { Best = new Chromosome() };
+        // What-if seçeneklerini uygula
+        ApplyWhatIfOptions(options);
+
+        if (!courses.Any() || !classrooms.Any() || _allowedDays.Length == 0)
+        {
+            sw.Stop();
+            return new ScheduleResult { Best = new Chromosome(), ElapsedMs = sw.ElapsedMilliseconds };
+        }
 
         var population = Enumerable.Range(0, PopulationSize)
             .Select(_ => CreateRandomChromosome(courses, classrooms))
@@ -58,24 +95,41 @@ public class GeneticAlgorithmService
         Chromosome best = population[0];
         var fitnessHistory = new List<double>();
         int bestGeneration = 0;
+        int stagnation = 0;
+        bool stoppedEarly = false;
 
         for (int gen = 0; gen < MaxGenerations; gen++)
         {
-            foreach (var chr in population)
-                chr.Fitness = CalculateFitness(chr);
+            // Fitness değerlendirmesi paralel — popülasyon büyüdükçe belirgin hızlanma
+            Parallel.ForEach(population, chr => chr.Fitness = CalculateFitness(chr));
 
             var currentBest = population.MaxBy(c => c.Fitness)!;
             if (currentBest.Fitness > best.Fitness)
             {
                 best = currentBest.Clone();
                 bestGeneration = gen + 1;
+                stagnation = 0;
+            }
+            else
+            {
+                stagnation++;
             }
 
             fitnessHistory.Add(Math.Round(best.Fitness, 4));
 
             if (best.Fitness >= 1.0) break;
 
-            var newPopulation = new List<Chromosome> { best.Clone() };
+            // Erken durdurma: uzun süre iyileşme yoksa boşa nesil harcama
+            if (stagnation >= StagnationLimit)
+            {
+                stoppedEarly = true;
+                break;
+            }
+
+            // Adaptif mutasyon: tıkanma arttıkça çeşitliliği artır (yerel optimumdan kaçış)
+            double mutation = Math.Min(MaxMutationRate, MutationRate * (1 + stagnation / 10.0));
+
+            var newPopulation = new List<Chromosome> { best.Clone() };  // elitizm
             while (newPopulation.Count < PopulationSize)
             {
                 var parent1 = TournamentSelect(population);
@@ -83,19 +137,44 @@ public class GeneticAlgorithmService
                 var child = _random.NextDouble() < CrossoverRate
                     ? Crossover(parent1, parent2)
                     : parent1.Clone();
-                Mutate(child);
+                Mutate(child, mutation);
                 newPopulation.Add(child);
             }
             population = newPopulation;
         }
 
+        sw.Stop();
         return new ScheduleResult
         {
             Best = best,
             FitnessHistory = fitnessHistory,
             BestGeneration = bestGeneration,
-            TotalGenerations = fitnessHistory.Count
+            TotalGenerations = fitnessHistory.Count,
+            ElapsedMs = sw.ElapsedMilliseconds,
+            StoppedEarly = stoppedEarly
         };
+    }
+
+    private void ApplyWhatIfOptions(WhatIfOptions? options)
+    {
+        if (options is null)
+        {
+            _allowedDays = WorkDays;
+            _lockedGenes = [];
+            return;
+        }
+
+        // Kapalı günleri çıkar (geçerli aralık 0..4)
+        var excluded = options.ExcludedDays.Where(d => d is >= 0 and < 5).ToHashSet();
+        _allowedDays = WorkDays.Where((_, idx) => !excluded.Contains(idx)).ToArray();
+
+        // Sabitlenen dersler: courseId → (gün, slot)
+        _lockedGenes = options.LockedAssignments
+            .Where(l => l.DayOfWeek is >= 0 and < 5 && l.StartHour is >= 8 and <= 17)
+            .GroupBy(l => l.CourseId)
+            .ToDictionary(
+                g => g.Key,
+                g => (Day: WorkDays[g.First().DayOfWeek], TimeSlot: g.First().StartHour - 8));
     }
 
     private Chromosome CreateRandomChromosome(
@@ -110,12 +189,26 @@ public class GeneticAlgorithmService
             else
                 classroomId = classrooms[_random.Next(classrooms.Count)].Id;
 
+            // Sabitlenmiş ders ise gün/saat kilitli, değilse rastgele (izinli günlerden)
+            DayOfWeek day;
+            int timeSlot;
+            if (_lockedGenes.TryGetValue(course.Id, out var locked))
+            {
+                day = locked.Day;
+                timeSlot = locked.TimeSlot;
+            }
+            else
+            {
+                day = _allowedDays[_random.Next(_allowedDays.Length)];
+                timeSlot = _random.Next(10);
+            }
+
             return new Gene(
                 courseId: course.Id,
                 instructorId: course.InstructorId,
                 classroomId: classroomId,
-                day: WorkDays[_random.Next(WorkDays.Length)],
-                timeSlot: _random.Next(10)
+                day: day,
+                timeSlot: timeSlot
             );
         }).ToList();
 
@@ -135,21 +228,30 @@ public class GeneticAlgorithmService
                 conflicts++;
         }
 
-        // Zaman dilimi çakışmaları
-        for (int i = 0; i < genes.Count; i++)
+        // Zaman dilimi çakışmaları — (gün, saat) gruplaması ile O(n)
+        // Eski hali iç içe döngüyle O(n²) idi; aynı sonucu daha hızlı üretir.
+        var slots = new Dictionary<(DayOfWeek, int), (Dictionary<int, int> Rooms, Dictionary<int, int> Instructors)>();
+        foreach (var g in genes)
         {
-            for (int j = i + 1; j < genes.Count; j++)
+            var key = (g.Day, g.TimeSlot);
+            if (!slots.TryGetValue(key, out var maps))
             {
-                var a = genes[i];
-                var b = genes[j];
-
-                if (a.Day != b.Day || a.TimeSlot != b.TimeSlot) continue;
-
-                // Aynı sınıf çakışması
-                if (a.ClassroomId == b.ClassroomId) conflicts++;
-                // Aynı hoca çakışması
-                if (a.InstructorId == b.InstructorId && a.InstructorId != 0) conflicts++;
+                maps = (new Dictionary<int, int>(), new Dictionary<int, int>());
+                slots[key] = maps;
             }
+
+            maps.Rooms[g.ClassroomId] = maps.Rooms.GetValueOrDefault(g.ClassroomId) + 1;
+            if (g.InstructorId != 0)
+                maps.Instructors[g.InstructorId] = maps.Instructors.GetValueOrDefault(g.InstructorId) + 1;
+        }
+
+        // Aynı slot içinde k ders aynı dersliği/hocayı paylaşıyorsa C(k,2) çakışma sayılır
+        foreach (var (_, maps) in slots)
+        {
+            foreach (var count in maps.Rooms.Values)
+                if (count > 1) conflicts += count * (count - 1) / 2;
+            foreach (var count in maps.Instructors.Values)
+                if (count > 1) conflicts += count * (count - 1) / 2;
         }
 
         return 1.0 / (1.0 + conflicts);
@@ -166,13 +268,16 @@ public class GeneticAlgorithmService
         return new Chromosome(childGenes);
     }
 
-    private void Mutate(Chromosome chromosome)
+    private void Mutate(Chromosome chromosome, double mutationRate)
     {
         foreach (var gene in chromosome.Genes)
         {
-            if (_random.NextDouble() < MutationRate)
+            // Sabitlenmiş dersler mutasyona uğramaz (What-if kilidi korunur)
+            if (_lockedGenes.ContainsKey(gene.CourseId)) continue;
+
+            if (_random.NextDouble() < mutationRate)
             {
-                gene.Day = WorkDays[_random.Next(WorkDays.Length)];
+                gene.Day = _allowedDays[_random.Next(_allowedDays.Length)];
                 gene.TimeSlot = _random.Next(10);
             }
         }
