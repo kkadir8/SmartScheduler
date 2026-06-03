@@ -9,6 +9,16 @@ using SmartScheduler.API.Services.Interfaces;
 
 namespace SmartScheduler.API.Services;
 
+/// <summary>
+/// Kayıtlı ders programlarını dışa aktarır.
+/// Desteklenen formatlar:
+///   • PDF  — QuestPDF kütüphanesi ile A4 Landscape takvim grid (GenerateSchedulePdfAsync)
+///   • XLSX — ClosedXML kütüphanesi ile çok sayfalı Excel dosyası
+///     - Ders programı (GenerateScheduleExcelAsync)
+///     - Tüm dersler  (GenerateCoursesExcelAsync)
+///     - Tüm hocalar  (GenerateInstructorsExcelAsync)
+///     - Tüm derslikler (GenerateClassroomsExcelAsync)
+/// </summary>
 public class ExportService : IExportService
 {
     private readonly AppDbContext _db;
@@ -86,10 +96,10 @@ public class ExportService : IExportService
                         return;
                     }
 
-                    // (gün, saat) → entry lookup tablosu
+                    // (gün, saat) → entry listesi (aynı slotta birden fazla ders olabilir)
                     var entryMap = entries
                         .GroupBy(e => (e.DayOfWeek, e.StartHour))
-                        .ToDictionary(g => g.Key, g => g.First());
+                        .ToDictionary(g => g.Key, g => g.ToList());
 
                     // Kullanılan saat aralığını bul
                     var minHour = entries.Min(e => e.StartHour);
@@ -153,41 +163,41 @@ public class ExportService : IExportService
                             for (int day = 0; day < 5; day++)
                             {
                                 var key = (day, hour);
-                                if (entryMap.TryGetValue(key, out var entry))
+                                if (entryMap.TryGetValue(key, out var entryList))
                                 {
-                                    var dersAdi   = entry.Course?.Name ?? "—";
-                                    var dersKodu  = entry.Course?.Code ?? "";
-                                    var hocaAdi   = entry.Course?.Instructor?.Name ?? "—";
-                                    var hocaUnvan = entry.Course?.Instructor?.Title ?? "";
-                                    var derslik   = entry.Classroom?.Name ?? "—";
-                                    var bina      = entry.Classroom?.Building ?? "";
-                                    var sure      = $"{entry.DurationHours} saat";
-                                    var derslikBilgi = !string.IsNullOrEmpty(bina)
-                                        ? $"{derslik} · {bina}" : derslik;
-
                                     table.Cell()
                                         .Background(gunRenkleri[day])
                                         .Border(0.5f).BorderColor(gunKoyu[day])
-                                        .Padding(5)
-                                        .Column(c =>
+                                        .Padding(4)
+                                        .Column(col =>
                                         {
-                                            // Ders adı (kalın, büyük)
-                                            c.Item().Text(dersAdi)
-                                                .Bold().FontSize(8).FontColor("#0f172a");
-                                            // Ders kodu (renkli küçük)
-                                            if (!string.IsNullOrEmpty(dersKodu))
-                                                c.Item().Text(dersKodu)
-                                                    .FontSize(7).FontColor(gunKoyu[day]);
-                                            // Hoca bilgisi
-                                            c.Item().PaddingTop(2)
-                                                .Text($"{hocaUnvan} {hocaAdi}".Trim())
-                                                .FontSize(7).FontColor("#374151");
-                                            // Derslik + bina
-                                            c.Item().Text(derslikBilgi)
-                                                .FontSize(7).FontColor("#6b7280");
-                                            // Süre (sağa hizalı küçük)
-                                            c.Item().AlignRight().Text(sure)
-                                                .FontSize(6).FontColor("#94a3b8");
+                                            foreach (var entry in entryList)
+                                            {
+                                                var dersAdi      = entry.Course?.Name ?? "—";
+                                                var dersKodu     = entry.Course?.Code ?? "";
+                                                var hocaAdi      = entry.Course?.Instructor?.Name ?? "—";
+                                                var hocaUnvan    = entry.Course?.Instructor?.Title ?? "";
+                                                var derslik      = entry.Classroom?.Name ?? "—";
+                                                var bina         = entry.Classroom?.Building ?? "";
+                                                var sure         = $"{entry.DurationHours} saat";
+                                                var derslikBilgi = !string.IsNullOrEmpty(bina) ? $"{derslik} · {bina}" : derslik;
+
+                                                // Birden fazla ders varsa araya ayırıcı çizgi
+                                                if (entryList.IndexOf(entry) > 0)
+                                                    col.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(gunKoyu[day]);
+
+                                                col.Item().Column(c =>
+                                                {
+                                                    c.Item().Text(dersAdi).Bold().FontSize(8).FontColor("#0f172a");
+                                                    if (!string.IsNullOrEmpty(dersKodu))
+                                                        c.Item().Text(dersKodu).FontSize(7).FontColor(gunKoyu[day]);
+                                                    c.Item().PaddingTop(1)
+                                                        .Text($"{hocaUnvan} {hocaAdi}".Trim())
+                                                        .FontSize(7).FontColor("#374151");
+                                                    c.Item().Text(derslikBilgi).FontSize(7).FontColor("#6b7280");
+                                                    c.Item().AlignRight().Text(sure).FontSize(6).FontColor("#94a3b8");
+                                                });
+                                            }
                                         });
                                 }
                                 else

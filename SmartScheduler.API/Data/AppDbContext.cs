@@ -108,25 +108,41 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         );
 
         // ── Courses (20 kayıt) ───────────────────────────────────────────
+        // Atama mantığı:
+        //   Ahmet Yılmaz (1, Prof. CS)       → CS301 Yazılım Müh.           — genel SE uzmanlığı
+        //   Ayşe Kaya    (2, Doç. CS)        → CS302 VT + CS311 ML          — veri & makine öğrenmesi
+        //   Mehmet Demir (3, Dr. CS)         → CS303 Algoritma + CS307 DS   — algoritma+veri yapıları çifti
+        //   Fatma Şahin  (4, Doç. CS)        → CS305 Ağlar + CS317 Paralel  — dağıtık/paralel hesaplama
+        //   Ali Çelik    (5, Prof. EE)        → CS306 OS + CS319 Gömülü     — donanım & düşük seviye
+        //   Zeynep Arslan(6, Dr. CS)         → CS308 NYP + CS309 Web        — OOP & web geliştirme
+        //   Hasan Kılıç  (7, Doç. Mat)       → CS316 Derleyici              — biçimsel diller/teorik CS
+        //   Elif Yıldız  (8, Dr. CS)         → CS310 Mobil                  — uygulama geliştirme
+        //   Mustafa Öztürk(9, Prof. CS)      → CS304 Yapay Zeka             — YZ & Prof. CS uzmanlığı
+        //   Selin Aydın  (10, Dr. IE)        → CS320 Proje Yön.             — mühendislik yönetimi
+        //   Burak Güneş  (11, Doç. CS)       → CS318 Grafik                 — görsel hesaplama
+        //   Merve Koç    (12, Dr. CS)         → CS313 Bulut                  — bulut & modern altyapı
+        //   Emre Yılmaz  (13, Prof. SE)       → CS312 Siber Güvenlik         — güvenlik & yazılım müh.
+        //   Ceren Doğan  (14, Dr. CS)         → CS314 Derin Öğrenme          — derin öğrenme araştırması
+        //   Tarık Şen    (15, Doç. CS)        → CS315 Sistem Prog.           — sistem programlama
         modelBuilder.Entity<Course>().HasData(
             new Course { Id = 1,  Code = "CS301", Name = "Yazılım Mühendisliği",        Credit = 3, DurationHours = 3, StudentCount = 60, InstructorId = 1,  CreatedAt = dt },
             new Course { Id = 2,  Code = "CS302", Name = "Veri Tabanı Sistemleri",      Credit = 4, DurationHours = 3, StudentCount = 45, InstructorId = 2,  CreatedAt = dt },
             new Course { Id = 3,  Code = "CS303", Name = "Algoritma Analizi",           Credit = 3, DurationHours = 2, StudentCount = 55, InstructorId = 3,  CreatedAt = dt },
-            new Course { Id = 4,  Code = "CS304", Name = "Yapay Zeka",                 Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 1,  CreatedAt = dt },
+            new Course { Id = 4,  Code = "CS304", Name = "Yapay Zeka",                 Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 9,  CreatedAt = dt },
             new Course { Id = 5,  Code = "CS305", Name = "Bilgisayar Ağları",           Credit = 4, DurationHours = 3, StudentCount = 50, InstructorId = 4,  CreatedAt = dt },
             new Course { Id = 6,  Code = "CS306", Name = "İşletim Sistemleri",          Credit = 3, DurationHours = 2, StudentCount = 65, InstructorId = 5,  CreatedAt = dt },
-            new Course { Id = 7,  Code = "CS307", Name = "Veri Yapıları",               Credit = 4, DurationHours = 4, StudentCount = 70, InstructorId = 9,  CreatedAt = dt },
+            new Course { Id = 7,  Code = "CS307", Name = "Veri Yapıları",               Credit = 4, DurationHours = 4, StudentCount = 70, InstructorId = 3,  CreatedAt = dt },
             new Course { Id = 8,  Code = "CS308", Name = "Nesne Yönelimli Programlama", Credit = 3, DurationHours = 3, StudentCount = 55, InstructorId = 6,  CreatedAt = dt },
-            new Course { Id = 9,  Code = "CS309", Name = "Web Programlama",             Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 8,  CreatedAt = dt },
-            new Course { Id = 10, Code = "CS310", Name = "Mobil Uygulama Geliştirme",   Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 11, CreatedAt = dt },
+            new Course { Id = 9,  Code = "CS309", Name = "Web Programlama",             Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 6,  CreatedAt = dt },
+            new Course { Id = 10, Code = "CS310", Name = "Mobil Uygulama Geliştirme",   Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 8,  CreatedAt = dt },
             new Course { Id = 11, Code = "CS311", Name = "Makine Öğrenmesi",            Credit = 4, DurationHours = 3, StudentCount = 35, InstructorId = 2,  CreatedAt = dt },
             new Course { Id = 12, Code = "CS312", Name = "Siber Güvenlik",              Credit = 3, DurationHours = 2, StudentCount = 30, InstructorId = 13, CreatedAt = dt },
-            new Course { Id = 13, Code = "CS313", Name = "Bulut Bilişim",               Credit = 3, DurationHours = 2, StudentCount = 38, InstructorId = 14, CreatedAt = dt },
-            new Course { Id = 14, Code = "CS314", Name = "Derin Öğrenme",               Credit = 4, DurationHours = 3, StudentCount = 25, InstructorId = 2,  CreatedAt = dt },
-            new Course { Id = 15, Code = "CS315", Name = "Sistem Programlama",          Credit = 3, DurationHours = 2, StudentCount = 50, InstructorId = 3,  CreatedAt = dt },
+            new Course { Id = 13, Code = "CS313", Name = "Bulut Bilişim",               Credit = 3, DurationHours = 2, StudentCount = 38, InstructorId = 12, CreatedAt = dt },
+            new Course { Id = 14, Code = "CS314", Name = "Derin Öğrenme",               Credit = 4, DurationHours = 3, StudentCount = 25, InstructorId = 14, CreatedAt = dt },
+            new Course { Id = 15, Code = "CS315", Name = "Sistem Programlama",          Credit = 3, DurationHours = 2, StudentCount = 50, InstructorId = 15, CreatedAt = dt },
             new Course { Id = 16, Code = "CS316", Name = "Derleyici Tasarımı",          Credit = 3, DurationHours = 3, StudentCount = 35, InstructorId = 7,  CreatedAt = dt },
-            new Course { Id = 17, Code = "CS317", Name = "Paralel Programlama",         Credit = 3, DurationHours = 2, StudentCount = 30, InstructorId = 15, CreatedAt = dt },
-            new Course { Id = 18, Code = "CS318", Name = "Bilgisayar Grafikleri",       Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 12, CreatedAt = dt },
+            new Course { Id = 17, Code = "CS317", Name = "Paralel Programlama",         Credit = 3, DurationHours = 2, StudentCount = 30, InstructorId = 4,  CreatedAt = dt },
+            new Course { Id = 18, Code = "CS318", Name = "Bilgisayar Grafikleri",       Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 11, CreatedAt = dt },
             new Course { Id = 19, Code = "CS319", Name = "Gömülü Sistemler",            Credit = 4, DurationHours = 3, StudentCount = 25, InstructorId = 5,  CreatedAt = dt },
             new Course { Id = 20, Code = "CS320", Name = "Proje Yönetimi",              Credit = 2, DurationHours = 1, StudentCount = 80, InstructorId = 10, CreatedAt = dt }
         );

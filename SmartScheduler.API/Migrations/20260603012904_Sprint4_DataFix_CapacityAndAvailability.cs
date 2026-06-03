@@ -12,6 +12,8 @@ namespace SmartScheduler.API.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("DELETE FROM \"InstructorAvailabilities\"");
+
             migrationBuilder.UpdateData(
                 table: "Courses",
                 keyColumn: "Id",

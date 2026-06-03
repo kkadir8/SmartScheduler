@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarCog,
@@ -15,13 +15,79 @@ import {
   LayoutGrid,
   User,
   DoorOpen,
+  ChevronDown,
 } from "lucide-react";
 import CalendarView from "@/components/CalendarView";
 import { useAuth } from "@/context/AuthContext";
 import { useCourses } from "@/hooks/useCourses";
 import { useClassrooms } from "@/hooks/useClassrooms";
+import { useInstructors } from "@/hooks/useInstructors";
+import CourseDetailModal from "@/components/modals/CourseDetailModal";
 import { API_BASE, DAYS } from "@/lib/constants";
 import type { FitnessData, ScheduleEntry, ConflictItem } from "@/types";
+
+function SelectMenu({
+  value,
+  onChange,
+  options,
+  placeholder = "Seç...",
+  disabled = false,
+  minWidth = "200px",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+  minWidth?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} className="relative" style={{ minWidth }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 bg-white/[0.04] border border-white/[0.10] rounded-xl px-3 py-2.5 text-sm text-white/80 hover:border-white/20 focus:outline-none focus:border-accent/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <span className={selected ? "text-white/80" : "text-white/35"}>{selected?.label ?? placeholder}</span>
+        <ChevronDown size={14} className={`text-white/40 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 w-full bg-[#16162a] border border-white/[0.10] rounded-xl overflow-hidden z-[200] shadow-2xl shadow-black/40">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
+                value === opt.value
+                  ? "bg-accent/20 text-accent"
+                  : "text-white/65 hover:bg-white/[0.06] hover:text-white"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LoadingDots() {
   return (
@@ -37,12 +103,17 @@ function LoadingDots() {
   );
 }
 
+/**
+ * Nesil başına fitness değişimini SVG çizgi grafiği olarak gösterir.
+ * Algoritmanın yakınsama hızını sunum sırasında görsel olarak açıklamak için kullanılır.
+ * Normalize edilmiş değerler (0–max) Y eksenine, nesil numaraları X eksenine yerleştirilir.
+ */
 function FitnessChart({ history }: { history: number[] }) {
   if (history.length < 2) return null;
   const w = 400;
   const h = 80;
   const pad = 8;
-  const max = Math.max(...history, 0.0001);
+  const max = Math.max(...history, 0.0001); // sıfıra bölmeyi önler
   const points = history.map((v, i) => {
     const x = pad + (i / (history.length - 1)) * (w - pad * 2);
     const y = h - pad - (v / max) * (h - pad * 2);
@@ -71,35 +142,31 @@ function FitnessChart({ history }: { history: number[] }) {
   );
 }
 
+/**
+ * Client-side çakışma tespiti: API'den çakışma listesi gelmediğinde kullanılır.
+ * İki ders aynı günde ve zaman aralıkları örtüşüyorsa:
+ *   - aynı derslikte → "room" çakışması
+ *   - aynı hocada → "instructor" çakışması
+ * Aralık örtüşmesi: startA < endB  &&  startB < endA
+ */
 function detectConflictsFromEntries(entries: ScheduleEntry[]): ConflictItem[] {
   const conflicts: ConflictItem[] = [];
-  const slotMap = new Map<string, ScheduleEntry[]>();
-
-  entries.forEach(e => {
-    const key = `${e.dayOfWeek}-${e.startHour}`;
-    slotMap.set(key, [...(slotMap.get(key) ?? []), e]);
-  });
-
-  slotMap.forEach((group, key) => {
-    if (group.length <= 1) return;
-    const [day, hour] = key.split("-").map(Number);
-
-    const roomGroups = new Map<number, ScheduleEntry[]>();
-    group.forEach(e => roomGroups.set(e.classroomId, [...(roomGroups.get(e.classroomId) ?? []), e]));
-    roomGroups.forEach((rg, classroomId) => {
-      if (rg.length > 1)
-        conflicts.push({ type: "room", day, hour, classroomId, courseIds: rg.map(e => e.courseId) });
-    });
-
-    const instrGroups = new Map<number, ScheduleEntry[]>();
-    group.filter(e => e.instructorId && e.instructorId !== 0)
-      .forEach(e => instrGroups.set(e.instructorId!, [...(instrGroups.get(e.instructorId!) ?? []), e]));
-    instrGroups.forEach((ig, instructorId) => {
-      if (ig.length > 1)
-        conflicts.push({ type: "instructor", day, hour, instructorId, courseIds: ig.map(e => e.courseId) });
-    });
-  });
-
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = entries[i];
+      const b = entries[j];
+      if (a.dayOfWeek !== b.dayOfWeek) continue;
+      const durA = a.durationHours ?? 1;
+      const durB = b.durationHours ?? 1;
+      const overlaps = a.startHour < b.startHour + durB && b.startHour < a.startHour + durA;
+      if (!overlaps) continue;
+      const hour = Math.max(a.startHour, b.startHour); // örtüşmenin başladığı saat
+      if (a.classroomId === b.classroomId)
+        conflicts.push({ type: "room", day: a.dayOfWeek, hour, classroomId: a.classroomId, courseIds: [a.courseId, b.courseId] });
+      if (a.instructorId && a.instructorId !== 0 && a.instructorId === b.instructorId)
+        conflicts.push({ type: "instructor", day: a.dayOfWeek, hour, instructorId: a.instructorId, courseIds: [a.courseId, b.courseId] });
+    }
+  }
   return conflicts;
 }
 
@@ -107,11 +174,13 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const { courses } = useCourses();
   const { classrooms } = useClassrooms();
+  const { instructors } = useInstructors();
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [fitnessData, setFitnessData] = useState<FitnessData | null>(null);
   const [showConflicts, setShowConflicts] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
 
   // "Kimin programı" görünümü — master programı hoca/derslik bazında süzer
   const [viewMode, setViewMode] = useState<"all" | "instructor" | "classroom">("all");
@@ -125,11 +194,17 @@ export default function SchedulePage() {
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [detailEntry, setDetailEntry] = useState<import("@/types").ScheduleEntry | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  /**
+   * Backend'deki GeneticAlgorithmService'i tetikler ve sonuçları state'e yazar.
+   * API yanıtı: { entries, fitnessPercent, conflictCount, fitnessHistory, ... }
+   * Eski API sürümü yalnızca entries dizisi döner; bu durumda çakışmalar client'ta hesaplanır.
+   */
   const generate = useCallback(async () => {
     setStatus("loading");
     setErrorMsg("");
@@ -141,6 +216,7 @@ export default function SchedulePage() {
       const res = await fetch(`${API_BASE}/api/schedule/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ department: selectedDepartment || null }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -150,7 +226,7 @@ export default function SchedulePage() {
       const parsedEntries: ScheduleEntry[] = Array.isArray(data) ? data : data.entries ?? [];
       setEntries(parsedEntries);
       if (!Array.isArray(data) && data.fitnessHistory) {
-        // Eğer API yeni sürümdeyse conflicts döner; yoksa client-side hesapla
+        // API yeni sürümdeyse conflicts döner; yoksa client-side hesapla
         const conflicts: ConflictItem[] = data.conflicts?.length > 0
           ? data.conflicts
           : detectConflictsFromEntries(parsedEntries);
@@ -170,7 +246,13 @@ export default function SchedulePage() {
       setErrorMsg(err instanceof Error ? err.message : "Bilinmeyen bir hata oluştu.");
       setStatus("error");
     }
-  }, []);
+  }, [selectedDepartment]);
+
+  // Veritabanındaki tüm benzersiz bölüm adları
+  const departmentOptions = useMemo(() => {
+    return Array.from(new Set(instructors.map((i) => i.department).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, "tr"));
+  }, [instructors]);
 
   // Programda yer alan hocalar (ada göre sıralı)
   const instructorOptions = useMemo(() => {
@@ -196,7 +278,8 @@ export default function SchedulePage() {
       .sort((a, b) => a.name.localeCompare(b.name, "tr"));
   }, [entries, classrooms]);
 
-  // Seçili görünüme göre süzülmüş + ders/derslik adıyla zenginleştirilmiş program
+  // Seçili görünüme göre süzülmüş + ders/derslik adıyla zenginleştirilmiş program.
+  // API sadece ID döndürdüğü için isimler burada client-side join ile eklenir.
   // (CalendarView'da "Ders 3" yerine "MAT101 — Matematik" görünür)
   const filteredEntries = useMemo(() => {
     const base =
@@ -206,6 +289,7 @@ export default function SchedulePage() {
           ? entries.filter((e) => e.classroomId === selectedClassroom)
           : entries;
 
+    // Mevcut isim verisi yoksa courses/classrooms önbelleğinden ekle
     return base.map((e) => {
       const c = courses.find((x) => x.id === e.courseId);
       const cl = classrooms.find((x) => x.id === e.classroomId);
@@ -223,8 +307,8 @@ export default function SchedulePage() {
       return `${instructorOptions.find((o) => o.id === selectedInstructor)?.name ?? "Hoca"} — Ders Programı`;
     if (viewMode === "classroom" && selectedClassroom)
       return `${classroomOptions.find((o) => o.id === selectedClassroom)?.name ?? "Derslik"} — Derslik Programı`;
-    return "Tüm Bölüm Programı";
-  }, [viewMode, selectedInstructor, selectedClassroom, instructorOptions, classroomOptions]);
+    return selectedDepartment ? `${selectedDepartment} — Bölüm Programı` : "Tüm Program";
+  }, [viewMode, selectedInstructor, selectedClassroom, instructorOptions, classroomOptions, selectedDepartment]);
 
   // Sekme değişince ilgili dropdown'ın ilk değerini otomatik seç
   const selectView = (mode: "all" | "instructor" | "classroom") => {
@@ -239,6 +323,7 @@ export default function SchedulePage() {
     try {
       const payload = {
         ...saveForm,
+        department: selectedDepartment,
         entries,
         fitnessPercent: fitnessData?.fitnessPercent,
       };
@@ -318,23 +403,36 @@ export default function SchedulePage() {
               Hoca müsaitlikleri ve derslik kısıtlarına göre haftalık program otomatik hesaplanır.
             </p>
           </div>
-          <button
-            onClick={generate}
-            disabled={status === "loading"}
-            className="flex items-center gap-2 bg-accent hover:bg-accent/90 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm shadow-lg shadow-accent/20"
-          >
-            {status === "loading" ? (
-              <>
-                <LoadingDots />
-                <span>Hesaplanıyor...</span>
-              </>
-            ) : (
-              <>
-                <Play size={14} />
-                Programı Oluştur
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <SelectMenu
+              value={selectedDepartment}
+              onChange={setSelectedDepartment}
+              disabled={status === "loading"}
+              placeholder="Tüm Bölümler"
+              options={[
+                { value: "", label: "Tüm Bölümler" },
+                ...departmentOptions.map((d) => ({ value: d, label: d })),
+              ]}
+              minWidth="220px"
+            />
+            <button
+              onClick={generate}
+              disabled={status === "loading"}
+              className="flex items-center gap-2 bg-accent hover:bg-accent/90 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm shadow-lg shadow-accent/20"
+            >
+              {status === "loading" ? (
+                <>
+                  <LoadingDots />
+                  <span>Hesaplanıyor...</span>
+                </>
+              ) : (
+                <>
+                  <Play size={14} />
+                  Programı Oluştur
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Error */}
@@ -519,30 +617,23 @@ export default function SchedulePage() {
 
           {/* Hoca / derslik seçici */}
           {viewMode === "instructor" && (
-            <select
-              value={selectedInstructor ?? ""}
-              onChange={(e) => setSelectedInstructor(Number(e.target.value))}
-              className="bg-cardbg border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-accent/50 min-w-[220px]"
-            >
-              {instructorOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
-              ))}
-            </select>
+            <SelectMenu
+              value={String(selectedInstructor ?? "")}
+              onChange={(v) => setSelectedInstructor(Number(v))}
+              options={instructorOptions.map((o) => ({ value: String(o.id), label: o.name }))}
+              minWidth="220px"
+            />
           )}
           {viewMode === "classroom" && (
-            <select
-              value={selectedClassroom ?? ""}
-              onChange={(e) => setSelectedClassroom(Number(e.target.value))}
-              className="bg-cardbg border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-accent/50 min-w-[220px]"
-            >
-              {classroomOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
-              ))}
-            </select>
+            <SelectMenu
+              value={String(selectedClassroom ?? "")}
+              onChange={(v) => setSelectedClassroom(Number(v))}
+              options={classroomOptions.map((o) => ({ value: String(o.id), label: o.name }))}
+              minWidth="220px"
+            />
           )}
-
           {filteredEntries.length > 0 ? (
-            <CalendarView entries={filteredEntries} />
+            <CalendarView entries={filteredEntries} onEntryClick={setDetailEntry} />
           ) : (
             <div className="bg-cardbg border border-white/[0.06] rounded-2xl p-8 text-center text-sm text-white/30">
               Bu görünümde ders bulunamadı.
@@ -561,6 +652,17 @@ export default function SchedulePage() {
           </div>
         )}
       </div>
+
+      {/* Ders Detay Modalı */}
+      {mounted && detailEntry && (
+        <CourseDetailModal
+          entry={detailEntry}
+          course={courses.find((c) => c.id === detailEntry.courseId)}
+          instructor={instructors.find((i) => i.id === detailEntry.instructorId)}
+          classroom={classrooms.find((c) => c.id === detailEntry.classroomId)}
+          onClose={() => setDetailEntry(null)}
+        />
+      )}
 
       {/* Kayıt Modalı */}
       {mounted && showSaveModal && createPortal(

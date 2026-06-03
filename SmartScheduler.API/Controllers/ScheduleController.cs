@@ -23,9 +23,9 @@ public class ScheduleController : ControllerBase
 
     /// <summary>Genetik algoritma ile optimum ders programı üret</summary>
     [HttpPost("generate")]
-    public async Task<IActionResult> Generate()
+    public async Task<IActionResult> Generate([FromBody] GenerateRequest? request)
     {
-        var result = await _algorithmService.GenerateScheduleAsync();
+        var result = await _algorithmService.GenerateScheduleAsync(request?.Department?.Trim());
         return Ok(BuildResponse(result));
     }
 
@@ -44,7 +44,7 @@ public class ScheduleController : ControllerBase
         if (!openDays)
             return BadRequest("En az bir çalışma günü açık olmalı. Tüm günler kapatılamaz.");
 
-        var result = await _algorithmService.GenerateScheduleAsync(options);
+        var result = await _algorithmService.GenerateScheduleAsync(options.Department?.Trim(), options);
         return Ok(BuildResponse(result));
     }
 
@@ -62,6 +62,7 @@ public class ScheduleController : ControllerBase
                 ? $"Program {DateTime.UtcNow:dd.MM.yyyy HH:mm}"
                 : request.Name.Trim(),
             Semester = request.Term?.Trim() ?? string.Empty,
+            Department = request.Department?.Trim() ?? string.Empty,
             FitnessScore = request.FitnessPercent.HasValue ? request.FitnessPercent.Value / 100.0 : null,
             GeneratedAt = DateTime.UtcNow,
             IsActive = false,
@@ -83,6 +84,7 @@ public class ScheduleController : ControllerBase
             schedule.Id,
             schedule.Name,
             term = schedule.Semester,
+            schedule.Department,
             fitnessPercent = schedule.FitnessScore.HasValue ? Math.Round(schedule.FitnessScore.Value * 100, 1) : (double?)null,
             createdAt = schedule.GeneratedAt,
             schedule.IsActive,
@@ -101,6 +103,7 @@ public class ScheduleController : ControllerBase
                 s.Id,
                 s.Name,
                 term = s.Semester,
+                s.Department,
                 fitnessPercent = s.FitnessScore.HasValue ? Math.Round(s.FitnessScore.Value * 100, 1) : 0.0,
                 createdAt = s.GeneratedAt,
                 s.IsActive,
@@ -140,6 +143,7 @@ public class ScheduleController : ControllerBase
             schedule.Id,
             schedule.Name,
             term = schedule.Semester,
+            schedule.Department,
             fitnessPercent = schedule.FitnessScore.HasValue ? Math.Round(schedule.FitnessScore.Value * 100, 1) : 0.0,
             createdAt = schedule.GeneratedAt,
             schedule.IsActive,
@@ -196,6 +200,8 @@ public class ScheduleController : ControllerBase
         return Ok(new { entry.Id, entry.DayOfWeek, entry.StartHour });
     }
 
+    public record GenerateRequest(string? Department);
+
     /// <summary>generate/whatif endpoint'lerinin ortak response gövdesi.</summary>
     private static object BuildResponse(ScheduleResult result)
     {
@@ -212,19 +218,19 @@ public class ScheduleController : ControllerBase
             durationHours = g.DurationHours,
         }).ToList();
 
-        // Çakışmaları 2 saatlik blok örtüşmesine göre tespit et; sayı = liste uzunluğu (tutarlı)
+        // GA'nın gerçek fitness değeri kullanılır; ayrı hesap yapılmaz.
+        // DetectConflicts yalnızca UI'da çakışma detayı için çalışır (gene-pair bazında).
         var detected = DetectConflicts(best.Genes);
         int conflictCount = detected.Count;
         int capacityCount = result.CapacityCount;
 
-        // Gösterilen fitness "geçerlilik" ölçer: hem zaman çakışması hem kapasite ihlali
-        // sıfırsa %100. (Hoca müsaitliği soft tercih olarak GA'nın iç aramasında dikkate
-        //  alınır ama tek bir tercih ihlali programı geçersiz yapmadığı için yüzdeyi ezmez.)
-        int totalIssues = conflictCount + capacityCount;
+        double fitnessValue = Math.Round(best.Fitness, 4);
+        double fitnessPercent = Math.Round(best.Fitness * 100.0, 1);
+
         return new
         {
-            fitness = Math.Round(1.0 / (1 + totalIssues), 4),
-            fitnessPercent = Math.Round(100.0 / (1 + totalIssues), 1),
+            fitness = fitnessValue,
+            fitnessPercent,
             conflictCount,
             capacityCount,
             conflicts = detected,

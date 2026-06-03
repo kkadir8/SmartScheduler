@@ -4,6 +4,7 @@ public class SaveScheduleRequest
 {
     public string Name { get; set; } = string.Empty;
     public string Term { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
     public double? FitnessPercent { get; set; }
     public List<SaveScheduleEntry> Entries { get; set; } = [];
 }

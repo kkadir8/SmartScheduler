@@ -2,5 +2,5 @@ namespace SmartScheduler.API.Services.Interfaces;
 
 public interface IGeneticAlgorithmService
 {
-    Task<ScheduleResult> GenerateScheduleAsync(WhatIfOptions? options = null);
+    Task<ScheduleResult> GenerateScheduleAsync(string? department = null, WhatIfOptions? options = null);
 }

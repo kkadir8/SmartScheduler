@@ -1,9 +1,20 @@
 # SmartScheduler — Veritabanı Şema Tasarımı
 
-**Veritabanı:** PostgreSQL 16  
-**ORM:** Entity Framework Core 9 (Code-First)  
-**Güncel Sprint:** 4 (What-if, kayıtlı programlar ve export akışları eklendi)  
-**Migration Sayısı:** 4 (InitialCreate · Sprint2_Auth_CRUD · Sprint3_Constraints_SeedData · Sprint3_InstructorAvailability)
+**Veritabanı:** PostgreSQL 16
+**ORM:** Entity Framework Core 9 (Code-First)
+**Güncel Sprint:** 4 Final
+**Migration Sayısı:** 8
+
+| Migration | İçerik |
+|-----------|--------|
+| `20260506_InitialCreate` | Temel şema |
+| `20260512_Sprint2_Auth_CRUD` | Kullanıcı + auth |
+| `20260517_Sprint3_Constraints_SeedData` | Kısıtlar + seed |
+| `20260520_Sprint3_InstructorAvailability` | Müsaitlik |
+| `20260603_Sprint4_DataFix_CapacityAndAvailability` | Veri düzeltme |
+| `20260603_Sprint4_VariableCourseDuration` | DurationHours alanı |
+| `20260603_Sprint4_RebalanceInstructorAssignments` | Hoca-ders dengeleme |
+| `20260603_Sprint4_AddDepartmentToSchedule` | **Schedule.Department** |
 
 ---
 
@@ -25,6 +36,7 @@ erDiagram
         string  Code            UK
         string  Name
         int     Credit
+        int     DurationHours
         int     StudentCount
         int     InstructorId    FK
         datetime CreatedAt
@@ -59,6 +71,7 @@ erDiagram
         int     Id          PK
         string  Name
         string  Semester
+        string  Department
         bool    IsActive
         float   FitnessScore
         datetime GeneratedAt
@@ -104,7 +117,7 @@ CREATE TABLE "Instructors" (
     "Title"      VARCHAR(50)  NOT NULL,   -- Prof. Dr., Doç. Dr., Dr. Öğr. Üyesi
     "Department" VARCHAR(100) NOT NULL,
     "Email"      VARCHAR(150) UNIQUE NOT NULL,
-    "CreatedAt"  TIMESTAMP DEFAULT NOW()
+    "CreatedAt"  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -112,12 +125,13 @@ CREATE TABLE "Instructors" (
 ```sql
 CREATE TABLE "Courses" (
     "Id"            SERIAL PRIMARY KEY,
-    "Code"          VARCHAR(20)  UNIQUE NOT NULL,  -- CS301
+    "Code"          VARCHAR(20)  UNIQUE NOT NULL,
     "Name"          VARCHAR(150) NOT NULL,
     "Credit"        INT NOT NULL CHECK ("Credit" BETWEEN 1 AND 6),
+    "DurationHours" INT NOT NULL DEFAULT 2,  -- haftalık tek oturum süresi (1–6 saat)
     "StudentCount"  INT NOT NULL DEFAULT 0,
     "InstructorId"  INT NOT NULL REFERENCES "Instructors"("Id"),
-    "CreatedAt"     TIMESTAMP DEFAULT NOW()
+    "CreatedAt"     TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -130,7 +144,7 @@ CREATE TABLE "Classrooms" (
     "Capacity"     INT NOT NULL CHECK ("Capacity" > 0),
     "HasLab"       BOOLEAN NOT NULL DEFAULT FALSE,
     "HasProjector" BOOLEAN NOT NULL DEFAULT TRUE,
-    "CreatedAt"    TIMESTAMP DEFAULT NOW()
+    "CreatedAt"    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -139,10 +153,11 @@ CREATE TABLE "Classrooms" (
 CREATE TABLE "Schedules" (
     "Id"           SERIAL PRIMARY KEY,
     "Name"         VARCHAR(150) NOT NULL,
-    "Semester"     VARCHAR(50) NOT NULL,   -- "2025-2026 Bahar"
+    "Semester"     VARCHAR(50)  NOT NULL,
+    "Department"   TEXT         NOT NULL DEFAULT '',  -- Sprint 4: bölüm adı
     "IsActive"     BOOLEAN NOT NULL DEFAULT FALSE,
-    "FitnessScore" FLOAT,
-    "GeneratedAt"  TIMESTAMP DEFAULT NOW()
+    "FitnessScore" DOUBLE PRECISION,
+    "GeneratedAt"  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -153,13 +168,13 @@ CREATE TABLE "ScheduleEntries" (
     "ScheduleId"     INT NOT NULL REFERENCES "Schedules"("Id") ON DELETE CASCADE,
     "CourseId"       INT NOT NULL REFERENCES "Courses"("Id"),
     "ClassroomId"    INT NOT NULL REFERENCES "Classrooms"("Id"),
-    "DayOfWeek"      INT NOT NULL CHECK ("DayOfWeek" BETWEEN 0 AND 4),  -- 0=Pzt, 4=Cum
+    "DayOfWeek"      INT NOT NULL CHECK ("DayOfWeek" BETWEEN 0 AND 4),
     "StartHour"      INT NOT NULL CHECK ("StartHour" BETWEEN 8 AND 18),
     "DurationHours"  INT NOT NULL DEFAULT 2
 );
 ```
 
-### Constraint (Kısıt — Sprint 3)
+### Constraint (Kısıt)
 ```sql
 CREATE TABLE "Constraints" (
     "Id"          SERIAL PRIMARY KEY,
@@ -167,17 +182,17 @@ CREATE TABLE "Constraints" (
     "ClassroomId" INT NOT NULL REFERENCES "Classrooms"("Id") ON DELETE CASCADE,
     "Notes"       TEXT,
     "CreatedAt"   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE ("CourseId", "ClassroomId")   -- mükerrer kısıt engeli
+    UNIQUE ("CourseId", "ClassroomId")
 );
 ```
 
-### InstructorAvailability (Hoca Müsaitliği)
+### InstructorAvailability (Müsaitlik)
 ```sql
 CREATE TABLE "InstructorAvailabilities" (
-    "Id"          SERIAL PRIMARY KEY,
+    "Id"           SERIAL PRIMARY KEY,
     "InstructorId" INT NOT NULL REFERENCES "Instructors"("Id") ON DELETE CASCADE,
-    "DayOfWeek"   INT NOT NULL CHECK ("DayOfWeek" BETWEEN 0 AND 4),
-    "Hour"        INT NOT NULL CHECK ("Hour" BETWEEN 8 AND 18),
+    "DayOfWeek"    INT NOT NULL CHECK ("DayOfWeek" BETWEEN 0 AND 4),
+    "Hour"         INT NOT NULL CHECK ("Hour" BETWEEN 8 AND 18),
     UNIQUE ("InstructorId", "DayOfWeek", "Hour")
 );
 ```
@@ -188,27 +203,28 @@ CREATE TABLE "Users" (
     "Id"           SERIAL PRIMARY KEY,
     "Username"     VARCHAR(50)  UNIQUE NOT NULL,
     "Email"        VARCHAR(150) UNIQUE NOT NULL,
-    "PasswordHash" VARCHAR(255) NOT NULL,
-    "Role"         VARCHAR(20)  NOT NULL DEFAULT 'User',  -- Admin, User
-    "CreatedAt"    TIMESTAMP DEFAULT NOW()
+    "PasswordHash" VARCHAR(255) NOT NULL,  -- BCrypt
+    "Role"         VARCHAR(20)  NOT NULL DEFAULT 'User',
+    "CreatedAt"    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
 ---
 
-## EF Core Entity Sınıfları (C#)
+## EF Core Entity Sınıfları (güncel)
 
-### Instructor.cs
+### Schedule.cs
 ```csharp
-public class Instructor
+public class Schedule
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Department { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public ICollection<Course> Courses { get; set; } = [];
+    public string Semester { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;  // Sprint 4
+    public bool IsActive { get; set; }
+    public double? FitnessScore { get; set; }
+    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+    public ICollection<ScheduleEntry> Entries { get; set; } = [];
 }
 ```
 
@@ -220,88 +236,34 @@ public class Course
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int Credit { get; set; }
+    public int DurationHours { get; set; } = 2;  // Sprint 4
     public int StudentCount { get; set; }
     public int InstructorId { get; set; }
-    public Instructor Instructor { get; set; } = null!;
+    public Instructor? Instructor { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<ScheduleEntry> ScheduleEntries { get; set; } = [];
-}
-```
-
-### Classroom.cs
-```csharp
-public class Classroom
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Building { get; set; }
-    public int Capacity { get; set; }
-    public bool HasLab { get; set; }
-    public bool HasProjector { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public ICollection<ScheduleEntry> ScheduleEntries { get; set; } = [];
-}
-```
-
-### Schedule.cs
-```csharp
-public class Schedule
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Semester { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-    public double? FitnessScore { get; set; }
-    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
-    public ICollection<ScheduleEntry> Entries { get; set; } = [];
-}
-```
-
-### ScheduleEntry.cs
-```csharp
-public class ScheduleEntry
-{
-    public int Id { get; set; }
-    public int ScheduleId { get; set; }
-    public Schedule Schedule { get; set; } = null!;
-    public int CourseId { get; set; }
-    public Course Course { get; set; } = null!;
-    public int ClassroomId { get; set; }
-    public Classroom Classroom { get; set; } = null!;
-    public int DayOfWeek { get; set; }   // 0=Pazartesi … 4=Cuma
-    public int StartHour { get; set; }   // 8 … 18
-    public int DurationHours { get; set; } = 2;
-}
-```
-
-### Constraint.cs (Sprint 3)
-```csharp
-public class Constraint
-{
-    public int Id { get; set; }
-    public int CourseId { get; set; }
-    public Course Course { get; set; } = null!;
-    public int ClassroomId { get; set; }
-    public Classroom Classroom { get; set; } = null!;
-    public string? Notes { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public ICollection<Constraint> Constraints { get; set; } = [];
 }
 ```
 
 ---
 
-## Seed Data
+## Seed Data (HasData)
 
-3 migration aşamasında otomatik yüklenen veriler:
+Migration'larla otomatik yüklenen veriler (EnsureCreated/Migrate sırasında uygulanır):
 
-| Migration | Eklenen Veriler |
-|-----------|----------------|
-| InitialCreate | Boş şema |
-| Sprint2_Auth_CRUD | 4 Hoca, 5 Ders, 5 Sınıf (temel CRUD test verisi) |
-| Sprint3_Constraints_SeedData | +11 Hoca, +15 Ders, +10 Sınıf, 21 Kısıt |
+| Tablo | Kayıt Sayısı | Notlar |
+|-------|-------------|--------|
+| Instructors | 15 | 5 farklı bölüm (BM, EEM, Matematik, YM, Endüstri) |
+| Courses | 20 | CS301–CS320, 1–4 saatlik dersler |
+| Classrooms | 15 | D-101, LAB-1..4, AMFİ-1..2 vb. |
+| Constraints | 21 | Lab/kapasite kısıtları |
+| InstructorAvailabilities | 60 | Hoca 1 ve 3 için tam hafta |
+| Users | 0 | HasData yok — API ile oluşturulur |
+| Schedules | 0 | API ile oluşturulur |
 
-**Toplam (Sprint 4 itibarıyla):** 15 hoca · 20 ders · 15 sınıf · 21 kısıt · 4 migration
+**Sprint 4 hoca-ders yeniden dengeleme:** CS304 Yapay Zeka → Mustafa Öztürk, CS307 Veri Yapıları → Mehmet Demir, CS309 Web Programlama → Zeynep Arslan ve diğer 6 ders yeniden atandı.
 
 ---
 
-*DevArchitechs · SmartScheduler · Veritabanı Şema v2.1 (Sprint 4)*
+*DevArchitechs · SmartScheduler · Veritabanı Şema v4.0 (Sprint 4 Final)*

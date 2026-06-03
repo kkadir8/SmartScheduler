@@ -11,9 +11,12 @@ using SmartScheduler.API.Services.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
-// EF Core + PostgreSQL
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// EF Core + PostgreSQL (test ortamında factory kendi DbContext'ini sağlar)
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+}
 
 // QuestPDF Community Lisansı (ücretsiz, açık kaynak projeler için)
 QuestPDF.Settings.License = LicenseType.Community;
@@ -82,9 +85,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Otomatik migration
-using (var scope = app.Services.CreateScope())
+// Otomatik migration (test ortamında atlanır, factory EnsureCreated kullanır)
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
@@ -102,3 +106,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

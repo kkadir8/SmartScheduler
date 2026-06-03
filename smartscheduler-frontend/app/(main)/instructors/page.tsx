@@ -5,9 +5,11 @@ import { Mail, BookOpen, Users, Plus, Pencil, Trash2, Calendar, Download } from 
 import ApiError from "@/components/ApiError";
 import InstructorModal from "@/components/modals/InstructorModal";
 import AvailabilityModal from "@/components/modals/AvailabilityModal";
+import InstructorCoursesModal from "@/components/modals/InstructorCoursesModal";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { useInstructors } from "@/hooks/useInstructors";
+import { useCourses } from "@/hooks/useCourses";
 import { API_BASE } from "@/lib/constants";
 import type { Instructor } from "@/types";
 
@@ -47,10 +49,12 @@ function SkeletonCard() {
 export default function InstructorsPage() {
   const { user, logout } = useAuth();
   const { instructors, loading, error, refetch: refetchInstructors } = useInstructors();
+  const { courses, refetch: refetchCourses } = useCourses();
   const [deleteError, setDeleteError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editInstructor, setEditInstructor] = useState<Instructor | null>(null);
   const [availabilityTarget, setAvailabilityTarget] = useState<Instructor | null>(null);
+  const [coursesTarget, setCoursesTarget] = useState<Instructor | null>(null);
 
   const api = <T,>(endpoint: string, options?: RequestInit) =>
     apiFetch<T>(endpoint, { ...options, token: user?.token, onUnauthorized: logout });
@@ -154,13 +158,22 @@ export default function InstructorsPage() {
                       <span className="text-[11px] text-white/40">{instructor.courseCount ?? "—"} ders verilen</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setAvailabilityTarget(instructor)}
-                    className="mt-4 w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-accent/10 border border-white/[0.06] hover:border-accent/30 text-white/40 hover:text-accent text-xs font-medium py-2 rounded-xl transition-all"
-                  >
-                    <Calendar size={12} />
-                    Müsaitlik Ayarla
-                  </button>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => setCoursesTarget(instructor)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-emerald-500/10 border border-white/[0.06] hover:border-emerald-500/30 text-white/40 hover:text-emerald-400 text-xs font-medium py-2 rounded-xl transition-all"
+                    >
+                      <BookOpen size={12} />
+                      Ders Ata
+                    </button>
+                    <button
+                      onClick={() => setAvailabilityTarget(instructor)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-accent/10 border border-white/[0.06] hover:border-accent/30 text-white/40 hover:text-accent text-xs font-medium py-2 rounded-xl transition-all"
+                    >
+                      <Calendar size={12} />
+                      Müsaitlik
+                    </button>
+                  </div>
                 </div>
               ))}
         </div>
@@ -178,6 +191,15 @@ export default function InstructorsPage() {
         <AvailabilityModal
           instructor={availabilityTarget}
           onClose={() => setAvailabilityTarget(null)}
+        />
+      )}
+
+      {coursesTarget && (
+        <InstructorCoursesModal
+          instructor={coursesTarget}
+          allCourses={courses}
+          onClose={() => setCoursesTarget(null)}
+          onSaved={() => { refetchInstructors(); refetchCourses(); }}
         />
       )}
     </div>

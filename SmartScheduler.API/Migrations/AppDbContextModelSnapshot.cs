@@ -519,7 +519,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 1,
+                            InstructorId = 9,
                             Name = "Yapay Zeka",
                             StudentCount = 40
                         },
@@ -552,7 +552,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
                             DurationHours = 4,
-                            InstructorId = 9,
+                            InstructorId = 3,
                             Name = "Veri Yapıları",
                             StudentCount = 70
                         },
@@ -574,7 +574,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 8,
+                            InstructorId = 6,
                             Name = "Web Programlama",
                             StudentCount = 35
                         },
@@ -585,7 +585,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 11,
+                            InstructorId = 8,
                             Name = "Mobil Uygulama Geliştirme",
                             StudentCount = 35
                         },
@@ -618,7 +618,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 14,
+                            InstructorId = 12,
                             Name = "Bulut Bilişim",
                             StudentCount = 38
                         },
@@ -629,7 +629,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
                             DurationHours = 3,
-                            InstructorId = 2,
+                            InstructorId = 14,
                             Name = "Derin Öğrenme",
                             StudentCount = 25
                         },
@@ -640,7 +640,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 3,
+                            InstructorId = 15,
                             Name = "Sistem Programlama",
                             StudentCount = 50
                         },
@@ -662,7 +662,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 15,
+                            InstructorId = 4,
                             Name = "Paralel Programlama",
                             StudentCount = 30
                         },
@@ -673,7 +673,7 @@ namespace SmartScheduler.API.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
                             DurationHours = 2,
-                            InstructorId = 12,
+                            InstructorId = 11,
                             Name = "Bilgisayar Grafikleri",
                             StudentCount = 40
                         },
@@ -1327,6 +1327,10 @@ namespace SmartScheduler.API.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<double?>("FitnessScore")
                         .HasColumnType("double precision");

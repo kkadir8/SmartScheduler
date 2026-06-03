@@ -6,12 +6,18 @@ using SmartScheduler.API.Models;
 
 namespace SmartScheduler.API.Controllers;
 
+/// <summary>DayOfWeek (0=Pazartesi…4=Cuma) ve saat bilgisini taşıyan müsaitlik dilimi.</summary>
 public record AvailabilitySlot(int DayOfWeek, int Hour);
 
+/// <summary>
+/// Öğretim üyesi CRUD + ders ataması + haftalık müsaitlik yönetimi.
+/// Müsaitlik verileri GeneticAlgorithmService tarafından soft constraint olarak kullanılır.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class InstructorsController(AppDbContext db) : ControllerBase
 {
+    /// <summary>Tüm öğretim üyelerini ders sayısıyla birlikte listeler.</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll() =>
         Ok(await db.Instructors
@@ -72,6 +78,43 @@ public class InstructorsController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("{id}/courses")]
+    public async Task<IActionResult> GetAssignedCourses(int id)
+    {
+        if (!await db.Instructors.AnyAsync(i => i.Id == id)) return NotFound();
+        var ids = await db.Courses
+            .Where(c => c.InstructorId == id)
+            .Select(c => c.Id)
+            .ToListAsync();
+        return Ok(ids);
+    }
+
+    /// <summary>
+    /// Bir hocanın ders listesini atomik olarak günceller.
+    /// Önce hocadan tüm dersler alınır (InstructorId=0), ardından yeni liste atanır.
+    /// Bu sayede başka hocada olan bir ders de yeniden atanabilir.
+    /// </summary>
+    [HttpPut("{id}/courses")]
+    [Authorize]
+    public async Task<IActionResult> UpdateCourses(int id, [FromBody] List<int> courseIds)
+    {
+        if (!await db.Instructors.AnyAsync(i => i.Id == id)) return NotFound();
+
+        // Bu hocadan çıkarılan dersleri serbest bırak (atanmamış = 0)
+        var previous = await db.Courses.Where(c => c.InstructorId == id).ToListAsync();
+        foreach (var c in previous) c.InstructorId = 0;
+
+        // Seçilen dersleri bu hocaya ata (başka hocadan alınanlar dahil)
+        if (courseIds.Count > 0)
+        {
+            var toAssign = await db.Courses.Where(c => courseIds.Contains(c.Id)).ToListAsync();
+            foreach (var c in toAssign) c.InstructorId = id;
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpGet("{id}/availability")]
     public async Task<IActionResult> GetAvailability(int id)
     {
@@ -83,12 +126,18 @@ public class InstructorsController(AppDbContext db) : ControllerBase
         return Ok(slots);
     }
 
+    /// <summary>
+    /// Hocanın haftalık müsaitlik tablosunu tamamen yeniler (replace-all stratejisi).
+    /// Gelen slot listesi boşsa tüm müsaitlik silinir — algoritma o hoca için
+    /// FullAvailability (her saat uygun) varsayılanına düşer.
+    /// </summary>
     [HttpPut("{id}/availability")]
     [Authorize]
     public async Task<IActionResult> UpdateAvailability(int id, [FromBody] List<AvailabilitySlot> slots)
     {
         if (!await db.Instructors.AnyAsync(i => i.Id == id)) return NotFound();
 
+        // Mevcut kayıtları sil, ardından yenilerini ekle
         var existing = await db.InstructorAvailabilities
             .Where(a => a.InstructorId == id).ToListAsync();
         db.InstructorAvailabilities.RemoveRange(existing);

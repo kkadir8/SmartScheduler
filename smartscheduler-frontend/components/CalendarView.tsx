@@ -7,6 +7,8 @@ import type { ScheduleEntry } from "@/types";
 
 export type { ScheduleEntry };
 
+// Her ders kodu ilk göründüğünde bu listeden sırasıyla renk alır.
+// courseColorMap sayesinde aynı ders tüm tabloda hep aynı renkte görünür.
 const ENTRY_COLORS = [
   { bg: "bg-blue-500/20", border: "border-blue-500/40", text: "text-blue-300" },
   { bg: "bg-purple-500/20", border: "border-purple-500/40", text: "text-purple-300" },
@@ -21,7 +23,13 @@ function getColor(idx: number) {
   return ENTRY_COLORS[idx % ENTRY_COLORS.length];
 }
 
-export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) {
+export default function CalendarView({
+  entries,
+  onEntryClick,
+}: {
+  entries: ScheduleEntry[];
+  onEntryClick?: (entry: ScheduleEntry) => void;
+}) {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const getMonday = (offset: number) => {
@@ -40,8 +48,11 @@ export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) 
     return `${monday.getDate()} ${monday.toLocaleString("tr-TR", { month: "short" })} – ${friday.getDate()} ${friday.toLocaleString("tr-TR", { month: "short", year: "numeric" })}`;
   })();
 
+  // entryMap[gün][saat] → o hücredeki ders listesi
+  // Yapı: dayOfWeek (0-4) → startHour (8-18) → [{entry, colorIdx}]
+  // Tek geçişte hem lookup tablosu hem renk ataması yapılır.
   const entryMap: Record<number, Record<number, { entry: ScheduleEntry; colorIdx: number }[]>> = {};
-  const courseColorMap: Record<number, number> = {};
+  const courseColorMap: Record<number, number> = {}; // courseId → renk indeksi
   let colorCounter = 0;
 
   entries.forEach((e) => {
@@ -103,14 +114,17 @@ export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) 
                 </td>
                 {DAYS.map((_, dayIdx) => {
                   const cells = entryMap[dayIdx]?.[hour] ?? [];
+                  // Bir önceki saat dersinin bloğu bu saati kaplıyor mu?
+                  // (örn. 09:00'da 2 saatlik ders varsa 10:00 hücresi "kapsanmış")
                   const isCovered = HOURS.slice(0, HOURS.indexOf(hour)).some((h) =>
                     (entryMap[dayIdx]?.[h] ?? []).some(
                       ({ entry }) => h + entry.durationHours > hour
                     )
                   );
-                  // Sadece BOŞ ve üstten kaplanan hücreyi gizle.
-                  // Bu saatte ders başlıyorsa (çakışma olsa bile) asla gizleme — ders kaybolmasın.
-                  if (isCovered && cells.length === 0) return null;
+                  // Kapsanan ama dersiz hücreyi GİZLE değil, boş <td> olarak tut.
+                  // null döndürürsek <td> tablo satırından düşer → sonraki sütunlar sola kayar.
+                  if (isCovered && cells.length === 0)
+                    return <td key={dayIdx} className="p-1" style={{ minHeight: "40px" }} />;
 
                   return (
                     <td
@@ -120,11 +134,13 @@ export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) 
                     >
                       {cells.map(({ entry, colorIdx }) => {
                         const c = getColor(colorIdx);
-                        const heightClass = entry.durationHours >= 2 ? "min-h-[76px]" : "min-h-[36px]";
+                        const entryHeight = entry.durationHours * 40 - 4;
                         return (
                           <div
                             key={entry.id}
-                            className={`${c.bg} border ${c.border} rounded-lg px-2 py-1.5 ${heightClass} flex flex-col justify-between`}
+                            onClick={() => onEntryClick?.(entry)}
+                            style={{ minHeight: `${entryHeight}px` }}
+                            className={`${c.bg} border ${c.border} rounded-lg px-2 py-1.5 flex flex-col justify-between ${onEntryClick ? "cursor-pointer hover:brightness-125 transition-all" : ""}`}
                           >
                             <div className={`text-[10px] font-semibold ${c.text} leading-tight truncate`}>
                               {entry.course?.code ?? `Ders ${entry.courseId}`}
