@@ -109,26 +109,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         // ── Courses (20 kayıt) ───────────────────────────────────────────
         modelBuilder.Entity<Course>().HasData(
-            new Course { Id = 1,  Code = "CS301", Name = "Yazılım Mühendisliği",        Credit = 3, StudentCount = 60, InstructorId = 1,  CreatedAt = dt },
-            new Course { Id = 2,  Code = "CS302", Name = "Veri Tabanı Sistemleri",      Credit = 4, StudentCount = 45, InstructorId = 2,  CreatedAt = dt },
-            new Course { Id = 3,  Code = "CS303", Name = "Algoritma Analizi",           Credit = 3, StudentCount = 55, InstructorId = 3,  CreatedAt = dt },
-            new Course { Id = 4,  Code = "CS304", Name = "Yapay Zeka",                 Credit = 3, StudentCount = 40, InstructorId = 1,  CreatedAt = dt },
-            new Course { Id = 5,  Code = "CS305", Name = "Bilgisayar Ağları",           Credit = 4, StudentCount = 50, InstructorId = 4,  CreatedAt = dt },
-            new Course { Id = 6,  Code = "CS306", Name = "İşletim Sistemleri",          Credit = 3, StudentCount = 65, InstructorId = 5,  CreatedAt = dt },
-            new Course { Id = 7,  Code = "CS307", Name = "Veri Yapıları",               Credit = 4, StudentCount = 70, InstructorId = 9,  CreatedAt = dt },
-            new Course { Id = 8,  Code = "CS308", Name = "Nesne Yönelimli Programlama", Credit = 3, StudentCount = 55, InstructorId = 6,  CreatedAt = dt },
-            new Course { Id = 9,  Code = "CS309", Name = "Web Programlama",             Credit = 3, StudentCount = 45, InstructorId = 8,  CreatedAt = dt },
-            new Course { Id = 10, Code = "CS310", Name = "Mobil Uygulama Geliştirme",   Credit = 3, StudentCount = 35, InstructorId = 11, CreatedAt = dt },
-            new Course { Id = 11, Code = "CS311", Name = "Makine Öğrenmesi",            Credit = 4, StudentCount = 40, InstructorId = 2,  CreatedAt = dt },
-            new Course { Id = 12, Code = "CS312", Name = "Siber Güvenlik",              Credit = 3, StudentCount = 30, InstructorId = 13, CreatedAt = dt },
-            new Course { Id = 13, Code = "CS313", Name = "Bulut Bilişim",               Credit = 3, StudentCount = 38, InstructorId = 14, CreatedAt = dt },
-            new Course { Id = 14, Code = "CS314", Name = "Derin Öğrenme",               Credit = 4, StudentCount = 25, InstructorId = 2,  CreatedAt = dt },
-            new Course { Id = 15, Code = "CS315", Name = "Sistem Programlama",          Credit = 3, StudentCount = 50, InstructorId = 3,  CreatedAt = dt },
-            new Course { Id = 16, Code = "CS316", Name = "Derleyici Tasarımı",          Credit = 3, StudentCount = 35, InstructorId = 7,  CreatedAt = dt },
-            new Course { Id = 17, Code = "CS317", Name = "Paralel Programlama",         Credit = 3, StudentCount = 30, InstructorId = 15, CreatedAt = dt },
-            new Course { Id = 18, Code = "CS318", Name = "Bilgisayar Grafikleri",       Credit = 3, StudentCount = 40, InstructorId = 12, CreatedAt = dt },
-            new Course { Id = 19, Code = "CS319", Name = "Gömülü Sistemler",            Credit = 4, StudentCount = 28, InstructorId = 5,  CreatedAt = dt },
-            new Course { Id = 20, Code = "CS320", Name = "Proje Yönetimi",              Credit = 2, StudentCount = 80, InstructorId = 10, CreatedAt = dt }
+            new Course { Id = 1,  Code = "CS301", Name = "Yazılım Mühendisliği",        Credit = 3, DurationHours = 3, StudentCount = 60, InstructorId = 1,  CreatedAt = dt },
+            new Course { Id = 2,  Code = "CS302", Name = "Veri Tabanı Sistemleri",      Credit = 4, DurationHours = 3, StudentCount = 45, InstructorId = 2,  CreatedAt = dt },
+            new Course { Id = 3,  Code = "CS303", Name = "Algoritma Analizi",           Credit = 3, DurationHours = 2, StudentCount = 55, InstructorId = 3,  CreatedAt = dt },
+            new Course { Id = 4,  Code = "CS304", Name = "Yapay Zeka",                 Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 1,  CreatedAt = dt },
+            new Course { Id = 5,  Code = "CS305", Name = "Bilgisayar Ağları",           Credit = 4, DurationHours = 3, StudentCount = 50, InstructorId = 4,  CreatedAt = dt },
+            new Course { Id = 6,  Code = "CS306", Name = "İşletim Sistemleri",          Credit = 3, DurationHours = 2, StudentCount = 65, InstructorId = 5,  CreatedAt = dt },
+            new Course { Id = 7,  Code = "CS307", Name = "Veri Yapıları",               Credit = 4, DurationHours = 4, StudentCount = 70, InstructorId = 9,  CreatedAt = dt },
+            new Course { Id = 8,  Code = "CS308", Name = "Nesne Yönelimli Programlama", Credit = 3, DurationHours = 3, StudentCount = 55, InstructorId = 6,  CreatedAt = dt },
+            new Course { Id = 9,  Code = "CS309", Name = "Web Programlama",             Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 8,  CreatedAt = dt },
+            new Course { Id = 10, Code = "CS310", Name = "Mobil Uygulama Geliştirme",   Credit = 3, DurationHours = 2, StudentCount = 35, InstructorId = 11, CreatedAt = dt },
+            new Course { Id = 11, Code = "CS311", Name = "Makine Öğrenmesi",            Credit = 4, DurationHours = 3, StudentCount = 35, InstructorId = 2,  CreatedAt = dt },
+            new Course { Id = 12, Code = "CS312", Name = "Siber Güvenlik",              Credit = 3, DurationHours = 2, StudentCount = 30, InstructorId = 13, CreatedAt = dt },
+            new Course { Id = 13, Code = "CS313", Name = "Bulut Bilişim",               Credit = 3, DurationHours = 2, StudentCount = 38, InstructorId = 14, CreatedAt = dt },
+            new Course { Id = 14, Code = "CS314", Name = "Derin Öğrenme",               Credit = 4, DurationHours = 3, StudentCount = 25, InstructorId = 2,  CreatedAt = dt },
+            new Course { Id = 15, Code = "CS315", Name = "Sistem Programlama",          Credit = 3, DurationHours = 2, StudentCount = 50, InstructorId = 3,  CreatedAt = dt },
+            new Course { Id = 16, Code = "CS316", Name = "Derleyici Tasarımı",          Credit = 3, DurationHours = 3, StudentCount = 35, InstructorId = 7,  CreatedAt = dt },
+            new Course { Id = 17, Code = "CS317", Name = "Paralel Programlama",         Credit = 3, DurationHours = 2, StudentCount = 30, InstructorId = 15, CreatedAt = dt },
+            new Course { Id = 18, Code = "CS318", Name = "Bilgisayar Grafikleri",       Credit = 3, DurationHours = 2, StudentCount = 40, InstructorId = 12, CreatedAt = dt },
+            new Course { Id = 19, Code = "CS319", Name = "Gömülü Sistemler",            Credit = 4, DurationHours = 3, StudentCount = 25, InstructorId = 5,  CreatedAt = dt },
+            new Course { Id = 20, Code = "CS320", Name = "Proje Yönetimi",              Credit = 2, DurationHours = 1, StudentCount = 80, InstructorId = 10, CreatedAt = dt }
         );
 
         // ── Classrooms (15 kayıt) ────────────────────────────────────────
@@ -193,5 +193,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new Constraint { Id = 20, CourseId = 20, ClassroomId = 8,  Notes = "Amfi gerektirir", CreatedAt = dt },
             new Constraint { Id = 21, CourseId = 20, ClassroomId = 15, Notes = "Amfi gerektirir", CreatedAt = dt }
         );
+
+        // ── InstructorAvailability seed (örnek müsaitlik) ────────────────
+        // Örnek olarak iki hocanın haftalık müsaitlik penceresi tanımlanır.
+        // Algoritma bu hocaların derslerini müsait gün/saatlere yerleştirmeyi tercih eder
+        // (soft kısıt). Saatler 08:00–17:00 — 2 saatlik ders en geç 16:00'da başlar.
+        var availability = new List<InstructorAvailability>();
+        int avId = 1;
+        void AddAvail(int instructorId, int[] days)
+        {
+            foreach (var d in days)
+                for (int h = 8; h <= 17; h++)
+                    availability.Add(new InstructorAvailability
+                    {
+                        Id = avId++, InstructorId = instructorId, DayOfWeek = d, Hour = h
+                    });
+        }
+        AddAvail(1, new[] { 0, 1, 2 });  // Ahmet Yılmaz: Pazartesi–Çarşamba müsait
+        AddAvail(3, new[] { 2, 3, 4 });  // Mehmet Demir: Çarşamba–Cuma müsait
+        modelBuilder.Entity<InstructorAvailability>().HasData(availability);
     }
 }

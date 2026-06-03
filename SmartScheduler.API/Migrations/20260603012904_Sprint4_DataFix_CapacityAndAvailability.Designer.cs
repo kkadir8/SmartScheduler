@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SmartScheduler.API.Data;
@@ -11,9 +12,11 @@ using SmartScheduler.API.Data;
 namespace SmartScheduler.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603012904_Sprint4_DataFix_CapacityAndAvailability")]
+    partial class Sprint4_DataFix_CapacityAndAvailability
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -456,9 +459,6 @@ namespace SmartScheduler.API.Migrations
                     b.Property<int>("Credit")
                         .HasColumnType("integer");
 
-                    b.Property<int>("DurationHours")
-                        .HasColumnType("integer");
-
                     b.Property<int>("InstructorId")
                         .HasColumnType("integer");
 
@@ -485,7 +485,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS301",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 3,
                             InstructorId = 1,
                             Name = "Yazılım Mühendisliği",
                             StudentCount = 60
@@ -496,7 +495,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS302",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 3,
                             InstructorId = 2,
                             Name = "Veri Tabanı Sistemleri",
                             StudentCount = 45
@@ -507,7 +505,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS303",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 3,
                             Name = "Algoritma Analizi",
                             StudentCount = 55
@@ -518,7 +515,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS304",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 1,
                             Name = "Yapay Zeka",
                             StudentCount = 40
@@ -529,7 +525,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS305",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 3,
                             InstructorId = 4,
                             Name = "Bilgisayar Ağları",
                             StudentCount = 50
@@ -540,7 +535,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS306",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 5,
                             Name = "İşletim Sistemleri",
                             StudentCount = 65
@@ -551,7 +545,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS307",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 4,
                             InstructorId = 9,
                             Name = "Veri Yapıları",
                             StudentCount = 70
@@ -562,7 +555,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS308",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 3,
                             InstructorId = 6,
                             Name = "Nesne Yönelimli Programlama",
                             StudentCount = 55
@@ -573,7 +565,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS309",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 8,
                             Name = "Web Programlama",
                             StudentCount = 35
@@ -584,7 +575,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS310",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 11,
                             Name = "Mobil Uygulama Geliştirme",
                             StudentCount = 35
@@ -595,7 +585,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS311",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 3,
                             InstructorId = 2,
                             Name = "Makine Öğrenmesi",
                             StudentCount = 35
@@ -606,7 +595,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS312",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 13,
                             Name = "Siber Güvenlik",
                             StudentCount = 30
@@ -617,7 +605,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS313",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 14,
                             Name = "Bulut Bilişim",
                             StudentCount = 38
@@ -628,7 +615,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS314",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 3,
                             InstructorId = 2,
                             Name = "Derin Öğrenme",
                             StudentCount = 25
@@ -639,7 +625,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS315",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 3,
                             Name = "Sistem Programlama",
                             StudentCount = 50
@@ -650,7 +635,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS316",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 3,
                             InstructorId = 7,
                             Name = "Derleyici Tasarımı",
                             StudentCount = 35
@@ -661,7 +645,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS317",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 15,
                             Name = "Paralel Programlama",
                             StudentCount = 30
@@ -672,7 +655,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS318",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 3,
-                            DurationHours = 2,
                             InstructorId = 12,
                             Name = "Bilgisayar Grafikleri",
                             StudentCount = 40
@@ -683,7 +665,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS319",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 4,
-                            DurationHours = 3,
                             InstructorId = 5,
                             Name = "Gömülü Sistemler",
                             StudentCount = 25
@@ -694,7 +675,6 @@ namespace SmartScheduler.API.Migrations
                             Code = "CS320",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Credit = 2,
-                            DurationHours = 1,
                             InstructorId = 10,
                             Name = "Proje Yönetimi",
                             StudentCount = 80

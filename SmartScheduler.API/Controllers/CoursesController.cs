@@ -16,7 +16,7 @@ public class CoursesController(AppDbContext db) : ControllerBase
             .Include(c => c.Instructor)
             .Select(c => new
             {
-                c.Id, c.Code, c.Name, c.Credit, c.StudentCount,
+                c.Id, c.Code, c.Name, c.Credit, c.DurationHours, c.StudentCount,
                 InstructorName = c.Instructor != null ? c.Instructor.Name : null,
                 c.InstructorId
             })
@@ -37,6 +37,7 @@ public class CoursesController(AppDbContext db) : ControllerBase
         if (await db.Courses.AnyAsync(c => c.Code == course.Code))
             return Conflict(new { message = $"'{course.Code}' kodlu ders zaten mevcut." });
 
+        course.DurationHours = Math.Clamp(course.DurationHours <= 0 ? 2 : course.DurationHours, 1, 6);
         db.Courses.Add(course);
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = course.Id }, course);
@@ -55,6 +56,7 @@ public class CoursesController(AppDbContext db) : ControllerBase
         course.Code = updated.Code;
         course.Name = updated.Name;
         course.Credit = updated.Credit;
+        course.DurationHours = Math.Clamp(updated.DurationHours <= 0 ? 2 : updated.DurationHours, 1, 6);
         course.StudentCount = updated.StudentCount;
         course.InstructorId = updated.InstructorId;
 
