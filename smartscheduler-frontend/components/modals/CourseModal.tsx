@@ -16,7 +16,7 @@ interface Props {
 
 export default function CourseModal({ course, instructors, onSave, onClose }: Props) {
   const [form, setForm] = useState<CourseForm>({
-    code: "", name: "", credit: 3, studentCount: 30, instructorId: 0
+    code: "", name: "", credit: 3, durationHours: 2, studentCount: 30, instructorId: 0
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -73,11 +73,21 @@ export default function CourseModal({ course, instructors, onSave, onClose }: Pr
               className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all" />
           </div>
 
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">Öğrenci Sayısı</label>
-            <input type="number" min={1} value={form.studentCount}
-              onChange={e => setForm({ ...form, studentCount: +e.target.value })}
-              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-white/50 mb-1.5">Öğrenci Sayısı</label>
+              <input type="number" min={1} value={form.studentCount}
+                onChange={e => setForm({ ...form, studentCount: +e.target.value })}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all" />
+            </div>
+            <div>
+              <label className="block text-xs text-white/50 mb-1.5">Ders Saati (süre)</label>
+              <select value={form.durationHours}
+                onChange={e => setForm({ ...form, durationHours: +e.target.value })}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent/50 transition-all">
+                {[1, 2, 3, 4, 5, 6].map(h => <option key={h} value={h}>{h} saat</option>)}
+              </select>
+            </div>
           </div>
 
           <div>

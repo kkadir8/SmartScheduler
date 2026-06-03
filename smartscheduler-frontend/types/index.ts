@@ -14,6 +14,7 @@ export interface Course {
   code: string;
   name: string;
   credit: number;
+  durationHours: number;
   studentCount: number;
   instructorId: number;
   instructorName?: string | null;
@@ -52,6 +53,7 @@ export interface ScheduleEntry {
   durationHours: number;
   course?: { code: string; name: string };
   classroom?: { name: string };
+  instructor?: { name: string };
 }
 
 export interface ConflictItem {

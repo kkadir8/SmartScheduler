@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, User } from "lucide-react";
 import { DAYS, HOURS } from "@/lib/constants";
 import type { ScheduleEntry } from "@/types";
 
@@ -108,7 +108,9 @@ export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) 
                       ({ entry }) => h + entry.durationHours > hour
                     )
                   );
-                  if (isCovered) return null;
+                  // Sadece BOŞ ve üstten kaplanan hücreyi gizle.
+                  // Bu saatte ders başlıyorsa (çakışma olsa bile) asla gizleme — ders kaybolmasın.
+                  if (isCovered && cells.length === 0) return null;
 
                   return (
                     <td
@@ -130,6 +132,14 @@ export default function CalendarView({ entries }: { entries: ScheduleEntry[] }) 
                             {entry.course?.name && (
                               <div className="text-[9px] text-white/40 leading-tight truncate mt-0.5">
                                 {entry.course.name}
+                              </div>
+                            )}
+                            {entry.instructor?.name && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <User size={8} className="text-white/30" />
+                                <span className="text-[9px] text-white/45 leading-tight truncate">
+                                  {entry.instructor.name}
+                                </span>
                               </div>
                             )}
                             <div className="flex items-center gap-1 mt-1">

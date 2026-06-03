@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarCog,
@@ -11,7 +11,10 @@ import {
   Dna,
   CheckCircle2,
   Save,
-  X
+  X,
+  LayoutGrid,
+  User,
+  DoorOpen,
 } from "lucide-react";
 import CalendarView from "@/components/CalendarView";
 import { useAuth } from "@/context/AuthContext";
@@ -110,6 +113,11 @@ export default function SchedulePage() {
   const [fitnessData, setFitnessData] = useState<FitnessData | null>(null);
   const [showConflicts, setShowConflicts] = useState(false);
 
+  // "Kimin programı" görünümü — master programı hoca/derslik bazında süzer
+  const [viewMode, setViewMode] = useState<"all" | "instructor" | "classroom">("all");
+  const [selectedInstructor, setSelectedInstructor] = useState<number | null>(null);
+  const [selectedClassroom, setSelectedClassroom] = useState<number | null>(null);
+
   // Kayıt Modalı state
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveForm, setSaveForm] = useState({ name: "", term: "" });
@@ -126,6 +134,9 @@ export default function SchedulePage() {
     setStatus("loading");
     setErrorMsg("");
     setFitnessData(null);
+    setViewMode("all");
+    setSelectedInstructor(null);
+    setSelectedClassroom(null);
     try {
       const res = await fetch(`${API_BASE}/api/schedule/generate`, {
         method: "POST",
@@ -160,6 +171,67 @@ export default function SchedulePage() {
       setStatus("error");
     }
   }, []);
+
+  // Programda yer alan hocalar (ada göre sıralı)
+  const instructorOptions = useMemo(() => {
+    const ids = Array.from(
+      new Set(entries.map((e) => e.instructorId).filter((x): x is number => !!x))
+    );
+    return ids
+      .map((id) => ({
+        id,
+        name: courses.find((c) => c.instructorId === id)?.instructorName ?? `Hoca #${id}`,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [entries, courses]);
+
+  // Programda yer alan derslikler
+  const classroomOptions = useMemo(() => {
+    const ids = Array.from(new Set(entries.map((e) => e.classroomId)));
+    return ids
+      .map((id) => ({
+        id,
+        name: classrooms.find((c) => c.id === id)?.name ?? `Derslik #${id}`,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [entries, classrooms]);
+
+  // Seçili görünüme göre süzülmüş + ders/derslik adıyla zenginleştirilmiş program
+  // (CalendarView'da "Ders 3" yerine "MAT101 — Matematik" görünür)
+  const filteredEntries = useMemo(() => {
+    const base =
+      viewMode === "instructor" && selectedInstructor
+        ? entries.filter((e) => e.instructorId === selectedInstructor)
+        : viewMode === "classroom" && selectedClassroom
+          ? entries.filter((e) => e.classroomId === selectedClassroom)
+          : entries;
+
+    return base.map((e) => {
+      const c = courses.find((x) => x.id === e.courseId);
+      const cl = classrooms.find((x) => x.id === e.classroomId);
+      return {
+        ...e,
+        course: e.course ?? (c ? { code: c.code, name: c.name } : undefined),
+        classroom: e.classroom ?? (cl ? { name: cl.name } : undefined),
+        instructor: e.instructor ?? (c?.instructorName ? { name: c.instructorName } : undefined),
+      };
+    });
+  }, [entries, viewMode, selectedInstructor, selectedClassroom, courses, classrooms]);
+
+  const viewTitle = useMemo(() => {
+    if (viewMode === "instructor" && selectedInstructor)
+      return `${instructorOptions.find((o) => o.id === selectedInstructor)?.name ?? "Hoca"} — Ders Programı`;
+    if (viewMode === "classroom" && selectedClassroom)
+      return `${classroomOptions.find((o) => o.id === selectedClassroom)?.name ?? "Derslik"} — Derslik Programı`;
+    return "Tüm Bölüm Programı";
+  }, [viewMode, selectedInstructor, selectedClassroom, instructorOptions, classroomOptions]);
+
+  // Sekme değişince ilgili dropdown'ın ilk değerini otomatik seç
+  const selectView = (mode: "all" | "instructor" | "classroom") => {
+    setViewMode(mode);
+    if (mode === "instructor") setSelectedInstructor(instructorOptions[0]?.id ?? null);
+    if (mode === "classroom") setSelectedClassroom(classroomOptions[0]?.id ?? null);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -415,11 +487,67 @@ export default function SchedulePage() {
       {/* Calendar */}
       {status === "success" && entries.length > 0 && (
         <div className="space-y-3 animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <Sparkles size={14} className="text-accent" />
-            <h3 className="text-sm font-semibold text-white">Haftalık Program</h3>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-white">{viewTitle}</h3>
+              <span className="text-xs text-white/30">({filteredEntries.length} ders)</span>
+            </div>
+
+            {/* Görünüm sekmeleri */}
+            <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+              {[
+                { mode: "all" as const, label: "Tüm Program", icon: LayoutGrid },
+                { mode: "instructor" as const, label: "Hocaya Göre", icon: User },
+                { mode: "classroom" as const, label: "Dersliğe Göre", icon: DoorOpen },
+              ].map(({ mode, label, icon: Icon }) => (
+                <button
+                  key={mode}
+                  onClick={() => selectView(mode)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    viewMode === mode
+                      ? "bg-accent/15 text-accent"
+                      : "text-white/45 hover:text-white/80"
+                  }`}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <CalendarView entries={entries} />
+
+          {/* Hoca / derslik seçici */}
+          {viewMode === "instructor" && (
+            <select
+              value={selectedInstructor ?? ""}
+              onChange={(e) => setSelectedInstructor(Number(e.target.value))}
+              className="bg-cardbg border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-accent/50 min-w-[220px]"
+            >
+              {instructorOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          )}
+          {viewMode === "classroom" && (
+            <select
+              value={selectedClassroom ?? ""}
+              onChange={(e) => setSelectedClassroom(Number(e.target.value))}
+              className="bg-cardbg border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-accent/50 min-w-[220px]"
+            >
+              {classroomOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          )}
+
+          {filteredEntries.length > 0 ? (
+            <CalendarView entries={filteredEntries} />
+          ) : (
+            <div className="bg-cardbg border border-white/[0.06] rounded-2xl p-8 text-center text-sm text-white/30">
+              Bu görünümde ders bulunamadı.
+            </div>
+          )}
         </div>
       )}
 

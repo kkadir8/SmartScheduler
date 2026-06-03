@@ -51,7 +51,7 @@ export default function CoursesPage() {
     return value ?? 0;
   };
 
-  const handleSave = async (course: { id?: number; code: string; name: string; credit: number; studentCount: number; instructorId: number }) => {
+  const handleSave = async (course: { id?: number; code: string; name: string; credit: number; durationHours: number; studentCount: number; instructorId: number }) => {
     const method = course.id ? "PUT" : "POST";
     const endpoint = course.id ? `/api/courses/${course.id}` : "/api/courses";
     const { error: err } = await api(endpoint, { method, body: JSON.stringify(course) });
@@ -115,6 +115,7 @@ export default function CoursesPage() {
     code: editCourse.code,
     name: editCourse.name,
     credit: editCourse.credit,
+    durationHours: editCourse.durationHours,
     studentCount: editCourse.studentCount,
     instructorId: editCourse.instructorId,
   } : null;
