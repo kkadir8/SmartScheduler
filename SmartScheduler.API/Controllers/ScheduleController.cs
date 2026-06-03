@@ -209,15 +209,25 @@ public class ScheduleController : ControllerBase
             classroomId = g.ClassroomId,
             dayOfWeek = (int)g.Day - 1,
             startHour = 8 + g.TimeSlot,
-            durationHours = 2,
+            durationHours = g.DurationHours,
         }).ToList();
 
+        // Çakışmaları 2 saatlik blok örtüşmesine göre tespit et; sayı = liste uzunluğu (tutarlı)
+        var detected = DetectConflicts(best.Genes);
+        int conflictCount = detected.Count;
+        int capacityCount = result.CapacityCount;
+
+        // Gösterilen fitness "geçerlilik" ölçer: hem zaman çakışması hem kapasite ihlali
+        // sıfırsa %100. (Hoca müsaitliği soft tercih olarak GA'nın iç aramasında dikkate
+        //  alınır ama tek bir tercih ihlali programı geçersiz yapmadığı için yüzdeyi ezmez.)
+        int totalIssues = conflictCount + capacityCount;
         return new
         {
-            fitness = Math.Round(best.Fitness, 4),
-            fitnessPercent = Math.Round(best.Fitness * 100, 1),
-            conflictCount = (int)Math.Round((1.0 / Math.Max(best.Fitness, 0.0001)) - 1),
-            conflicts = DetectConflicts(best.Genes),
+            fitness = Math.Round(1.0 / (1 + totalIssues), 4),
+            fitnessPercent = Math.Round(100.0 / (1 + totalIssues), 1),
+            conflictCount,
+            capacityCount,
+            conflicts = detected,
             bestGeneration = result.BestGeneration,
             totalGenerations = result.TotalGenerations,
             elapsedMs = result.ElapsedMs,
@@ -230,36 +240,45 @@ public class ScheduleController : ControllerBase
     private static List<object> DetectConflicts(IList<SmartScheduler.API.Models.Algorithm.Gene> genes)
     {
         var conflicts = new List<object>();
-        var slots = genes.GroupBy(g => (g.Day, g.TimeSlot));
+        var list = genes.ToList();
 
-        foreach (var slot in slots)
+        // İki ders aynı gün VE zaman aralıkları kesişiyorsa çakışır.
+        // Aralık örtüşmesi: startA < endB && startB < endA (her ders kendi süresince).
+        // Her ders çiftini bir kez kontrol ederiz → çakışmalar tekrarsız listelenir.
+        for (int i = 0; i < list.Count; i++)
         {
-            var list = slot.ToList();
-            int day = (int)slot.Key.Day - 1;
-            int hour = 8 + slot.Key.TimeSlot;
+            for (int j = i + 1; j < list.Count; j++)
+            {
+                var a = list[i];
+                var b = list[j];
+                if (a.Day != b.Day) continue;
+                bool overlap = a.TimeSlot < b.TimeSlot + b.DurationHours
+                            && b.TimeSlot < a.TimeSlot + a.DurationHours;
+                if (!overlap) continue;
 
-            // Aynı derslikte birden fazla ders
-            foreach (var roomGroup in list.GroupBy(g => g.ClassroomId).Where(g => g.Count() > 1))
-                conflicts.Add(new
-                {
-                    type = "room",
-                    day,
-                    hour,
-                    classroomId = roomGroup.Key,
-                    courseIds = roomGroup.Select(g => g.CourseId).ToList()
-                });
+                int day = (int)a.Day - 1;
+                int hour = 8 + Math.Max(a.TimeSlot, b.TimeSlot); // örtüşmenin başladığı saat
 
-            // Aynı hoca aynı slotta birden fazla ders
-            foreach (var instrGroup in list.Where(g => g.InstructorId != 0)
-                         .GroupBy(g => g.InstructorId).Where(g => g.Count() > 1))
-                conflicts.Add(new
-                {
-                    type = "instructor",
-                    day,
-                    hour,
-                    instructorId = instrGroup.Key,
-                    courseIds = instrGroup.Select(g => g.CourseId).ToList()
-                });
+                if (a.ClassroomId == b.ClassroomId)
+                    conflicts.Add(new
+                    {
+                        type = "room",
+                        day,
+                        hour,
+                        classroomId = a.ClassroomId,
+                        courseIds = new[] { a.CourseId, b.CourseId }
+                    });
+
+                if (a.InstructorId != 0 && a.InstructorId == b.InstructorId)
+                    conflicts.Add(new
+                    {
+                        type = "instructor",
+                        day,
+                        hour,
+                        instructorId = a.InstructorId,
+                        courseIds = new[] { a.CourseId, b.CourseId }
+                    });
+            }
         }
 
         return conflicts;
